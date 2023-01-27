@@ -14,15 +14,16 @@ make
 cd ..
 ```
 
-## Run
+## Usage
 
-run with `opt`
+Pass instrumentation happens at optimazation step.
+Compile source code into llvm-IR, instrument IR with the `opt`, then compile instrumented IR into exec.
 
 ```sh
-> clang -O0 -emit-llvm example.c -c -o exmaple.bc
-> opt -load ./build/report/libReportPass.so -reportpass -enable-new-pm=0 < example.bc > /dev/null
-called main with type i32 ()
-called zy with type i32 (i32, i32)
+clang -S -emit-llvm -Xclang -disable-O0-optnone example.c -o example.ll
+opt -load build/report/libReportPass.so -report -enable-new-pm=0 -S example.ll > example2.ll
+clang example2.ll
 ```
 
-* *or* [Automatically enable the pass](http://adriansampson.net/blog/clangpass.html)
+This implimentation is largely inspired by
+[Runtime Execution Profiling using LLVM](https://www.cs.cornell.edu/courses/cs6120/2019fa/blog/llvm-profiling/).

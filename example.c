@@ -30,3 +30,9 @@ int zy(int a, int b) {
     c = c + 1;
   return (c);
 }
+
+void print(int x) {
+  printf("x = %d\n", x);
+
+  return;
+}
