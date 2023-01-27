@@ -93,8 +93,7 @@ bool ReportPass::finialize(Module &M) {
   if (!mainFunc)
     return false;
   // Build printf function handle
-  // specify the first argument, i8* is the return type of
-  // CreateGlobalStringPtr
+  // specify the first argument, i8* is the return type of CreateGlobalStringPtr
   std::vector<Type *> FTyArgs;
   FTyArgs.push_back(Type::getInt8PtrTy(M.getContext()));
   // create function type with return type,
@@ -103,6 +102,7 @@ bool ReportPass::finialize(Module &M) {
       FunctionType::get(Type::getInt32Ty(M.getContext()), FTyArgs, true);
   // create function if not extern or defined
   FunctionCallee printF = M.getOrInsertFunction("printf", FTy);
+  std::string fname = mainFunc->getParent()->getSourceFileName();
 
   for (Function::iterator bb = mainFunc->begin(); bb != mainFunc->end(); bb++) {
     for (BasicBlock::iterator it = bb->begin(); it != bb->end(); it++) {
@@ -110,6 +110,12 @@ bool ReportPass::finialize(Module &M) {
       if ((std::string)it->getOpcodeName() == "ret") {
         // insert printf at the end of main function, before return function
         Builder.SetInsertPoint(&*bb, it);
+
+        // print a separation for later analysis
+        Value *sep = Builder.CreateGlobalStringPtr(
+            "--- " + fname + " exec report ---\n", "sepFormat");
+        std::vector<Value *> sep_argv = {sep};
+        CallInst::Create(printF, sep_argv, "printf", &*it);
 
         Value *format_long;
 
