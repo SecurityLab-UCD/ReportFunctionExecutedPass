@@ -54,9 +54,8 @@ bool ReportPass::runOnFunction(Function &F, Module &M) {
       // ensure the address will be a multiple of 16
       Align align_16 = Align(16);
 
-      new AtomicRMWInst(AtomicRMWInst::Add, atomicCounter,
-                        ConstantInt::get(Type::getInt64Ty(F.getContext()), 1),
-                        align_16, AtomicOrdering::SequentiallyConsistent,
+      new AtomicRMWInst(AtomicRMWInst::Add, atomicCounter, One, align_16,
+                        AtomicOrdering::SequentiallyConsistent,
                         SyncScope::System, it->getFirstNonPHI());
     }
   }
