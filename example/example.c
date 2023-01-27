@@ -12,11 +12,10 @@
 
 int main() {
   int j, n, m, sum;
-  scanf("%d", &n);
+  n = 5;
   for (j = 1; j <= n; j++) {
-    scanf("%d", &m);
+    m = 3;
     sum = zy(2, m);
     printf("%d\n", sum);
   }
 }
-
