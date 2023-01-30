@@ -1,15 +1,27 @@
+#include "llvm/ADT/APInt.h"
 #include "llvm/ADT/Statistic.h"
+#include "llvm/IR/AbstractCallSite.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/InstIterator.h"
+#include "llvm/IR/Instructions.h"
+#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/LegacyPassManager.h"
+#include "llvm/IR/Metadata.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Type.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/Alignment.h"
+#include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 
+#include <iostream>
 #include <string>
+#include <unordered_map>
 #include <vector>
 using namespace llvm;
 
@@ -17,130 +29,36 @@ using namespace llvm;
 STATISTIC(ReportCounter, "Counts number of functions executed");
 
 namespace {
-struct ReportPass : public ModulePass {
+struct ReportPass : public FunctionPass {
   static char ID;
-  ReportPass() : ModulePass(ID) {}
+  ReportPass() : FunctionPass(ID) {}
 
-  virtual bool runOnModule(Module &M);
-  virtual bool runOnFunction(Function &F, Module &M);
-
-  bool init(Module &M);      // create global variables to store exec count
-  bool finialize(Module &M); // write count to file
+  virtual bool runOnFunction(Function &F);
 };
 } // namespace
 
-bool ReportPass::runOnModule(Module &M) {
-  bool modified = init(M);
+bool ReportPass::runOnFunction(Function &F) {
+  // insert a function call to reportFunctionExec()
+  BasicBlock &entry = F.getEntryBlock();
+  IRBuilder<> Builder(F.getContext());
+  Builder.SetInsertPoint(&entry);
 
-  for (Module::iterator it = M.begin(); it != M.end(); it++) {
-    modified |= runOnFunction(*it, M);
-  }
-  modified |= finialize(M);
-
-  return modified;
-}
-
-bool ReportPass::runOnFunction(Function &F, Module &M) {
-  bool modified = false;
-  // errs() << F.getName() << "\n";
-  for (auto it = F.begin(); it != F.end(); it++) {
-
-    if (it == F.begin()) {
-      Type *I64Ty = Type::getInt64Ty(M.getContext());
-      IRBuilder<> Builder(F.getContext());
-      Twine s = F.getName() + ".glob";
-      Value *atomicCounter = M.getOrInsertGlobal(s.str(), I64Ty);
-      Value *One = ConstantInt::get(Type::getInt64Ty(F.getContext()), 1);
-      // ensure the address will be a multiple of 16
-      Align align_16 = Align(16);
-
-      new AtomicRMWInst(AtomicRMWInst::Add, atomicCounter, One, align_16,
-                        AtomicOrdering::SequentiallyConsistent,
-                        SyncScope::System, it->getFirstNonPHI());
-    }
-  }
-
-  return modified;
-}
-
-bool ReportPass::init(Module &M) {
-  IRBuilder<> Builder(M.getContext());
-  Function *mainFunc = M.getFunction("main");
-
-  // not the main module
-  if (!mainFunc)
-    return false;
-
-  Type *I64Ty = Type::getInt64Ty(M.getContext());
-
-  Module::FunctionListType &functionList = M.getFunctionList();
-  for (Function &f : functionList) {
-    // create global variable to store function exec count
-    Value *atomic_counter =
-        new GlobalVariable(M, I64Ty, false, GlobalValue::CommonLinkage,
-                           ConstantInt::get(I64Ty, 0), f.getName() + ".glob");
-  }
-
-  return true;
-}
-
-bool ReportPass::finialize(Module &M) {
-  IRBuilder<> Builder(M.getContext());
-  Function *mainFunc = M.getFunction("main");
-
-  // not the main module
-  if (!mainFunc)
-    return false;
-  // Build printf function handle
-  // specify the first argument, i8* is the return type of CreateGlobalStringPtr
   std::vector<Type *> FTyArgs;
-  FTyArgs.push_back(Type::getInt8PtrTy(M.getContext()));
+  FTyArgs.push_back(Type::getInt8PtrTy(F.getContext()));
   // create function type with return type,
   // argument types and if const argument
+  std::string func_name = "printf";
   FunctionType *FTy =
-      FunctionType::get(Type::getInt32Ty(M.getContext()), FTyArgs, true);
-  // create function if not extern or defined
-  FunctionCallee printF = M.getOrInsertFunction("printf", FTy);
-  std::string fname = mainFunc->getParent()->getSourceFileName();
-
-  for (Function::iterator bb = mainFunc->begin(); bb != mainFunc->end(); bb++) {
-    for (BasicBlock::iterator it = bb->begin(); it != bb->end(); it++) {
-      // insert at the end of main function
-      if ((std::string)it->getOpcodeName() == "ret") {
-        // insert printf at the end of main function, before return function
-        Builder.SetInsertPoint(&*bb, it);
-
-        // print a separation for later analysis
-        Value *sep = Builder.CreateGlobalStringPtr(
-            "--- " + fname + " exec report ---\n", "sepFormat");
-        std::vector<Value *> sep_argv = {sep};
-        CallInst::Create(printF, sep_argv, "printf", &*it);
-
-        Value *format_long;
-
-        auto &functionList = M.getFunctionList(); // gets the list of functions
-        Type *I64Ty = Type::getInt64Ty(M.getContext());
-        for (auto &function : functionList) { // iterates over the list
-
-          std::string func_name = function.getName().str();
-          format_long = Builder.CreateGlobalStringPtr(func_name + ": %ld\n",
-                                                      "formatLong");
-          std::vector<Value *> argVec;
-          argVec.push_back(format_long);
-          Twine s = function.getName() + ".glob";
-          Value *atomicCounter = M.getGlobalVariable(s.str(), I64Ty);
-
-          Value *finalVal = new LoadInst(I64Ty, atomicCounter,
-                                         function.getName() + ".val", &*it);
-
-          argVec.push_back(finalVal);
-          CallInst::Create(printF, argVec, "printf", &*it);
-        }
-      }
-    }
-  }
+      FunctionType::get(Type::getInt32Ty(entry.getContext()), FTyArgs, true);
+  Module *M = F.getParent();
+  FunctionCallee printF = M->getOrInsertFunction(func_name, FTy);
+  std::string msg = "hello: " + F.getName().str() + "\n";
+  Value *name = Builder.CreateGlobalStringPtr(msg, "name");
+  std::vector<Value *> sep_argv = {name};
+  CallInst::Create(printF, sep_argv, func_name, &*entry.begin());
   return true;
 }
+
 char ReportPass::ID = 0;
-static RegisterPass<ReportPass> X("report", "Report Function Executed Pass",
-                                  true, false);
+static RegisterPass<ReportPass> X("func_report",
+                                  "Report Function Executed Pass", true, true);
