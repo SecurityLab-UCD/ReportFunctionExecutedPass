@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+int id(int x) { return x; }
+
 int zy(int a, int b) {
   int i, c, t = 1;
   c = 0;
@@ -12,11 +14,5 @@ int zy(int a, int b) {
   }
   if (i * i > b)
     c = c + 1;
-  return (c);
-}
-
-void print(int x) {
-  printf("x = %d\n", x);
-
-  return;
+  return (id(c));
 }
