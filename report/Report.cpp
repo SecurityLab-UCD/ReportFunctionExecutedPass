@@ -39,6 +39,7 @@ struct ReportPass : public FunctionPass {
 
 bool ReportPass::runOnFunction(Function &F) {
   // insert a function call to reportFunctionExec()
+  std::string fname = F.getName().str();
   BasicBlock &entry = F.getEntryBlock();
   IRBuilder<> Builder(F.getContext());
   Builder.SetInsertPoint(&entry);
@@ -47,15 +48,13 @@ bool ReportPass::runOnFunction(Function &F) {
   FTyArgs.push_back(Type::getInt8PtrTy(F.getContext()));
   // create function type with return type,
   // argument types and if const argument
-  std::string func_name = "printf";
   FunctionType *FTy =
-      FunctionType::get(Type::getInt32Ty(entry.getContext()), FTyArgs, true);
+      FunctionType::get(Type::getInt32Ty(entry.getContext()), FTyArgs, false);
   Module *M = F.getParent();
-  FunctionCallee printF = M->getOrInsertFunction(func_name, FTy);
-  std::string msg = "hello: " + F.getName().str() + "\n";
-  Value *name = Builder.CreateGlobalStringPtr(msg, "name");
-  std::vector<Value *> sep_argv = {name};
-  CallInst::Create(printF, sep_argv, func_name, &*entry.begin());
+  FunctionCallee printF = M->getOrInsertFunction("count", FTy);
+  Value *name = Builder.CreateGlobalStringPtr(fname, "name");
+  std::vector<Value *> args = {name};
+  CallInst::Create(printF, args, "count", &*entry.begin());
   return true;
 }
 
