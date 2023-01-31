@@ -38,26 +38,41 @@ struct ReportPass : public FunctionPass {
 } // namespace
 
 bool ReportPass::runOnFunction(Function &F) {
-  // insert a function call to reportFunctionExec()
   std::string fname = F.getName().str();
-  BasicBlock &entry = F.getEntryBlock();
   IRBuilder<> Builder(F.getContext());
-  Builder.SetInsertPoint(&entry);
-
-  std::vector<Type *> FTyArgs;
-  FTyArgs.push_back(Type::getInt8PtrTy(F.getContext()));
-  // create function type with return type,
-  // argument types and if const argument
-  FunctionType *FTy =
-      FunctionType::get(Type::getInt32Ty(entry.getContext()), FTyArgs, false);
   Module *M = F.getParent();
-  FunctionCallee printF = M->getOrInsertFunction("count", FTy);
-  Value *name = Builder.CreateGlobalStringPtr(fname, "name");
-  std::vector<Value *> args = {name};
-  CallInst::Create(printF, args, "count", &*entry.begin());
+
+  if (fname == "main") {
+    // report at end of main, before it returns
+    for (Function::iterator bb = F.begin(); bb != F.end(); bb++) {
+      for (BasicBlock::iterator it = bb->begin(); it != bb->end(); it++) {
+        if ((std::string)it->getOpcodeName() == "ret") {
+          Builder.SetInsertPoint(&*bb, it);
+          FunctionType *FTy = FunctionType::get(
+              Type::getInt32Ty((*it).getContext()), {}, false);
+          std::vector<Value *> args = {};
+          FunctionCallee dump = M->getOrInsertFunction("dump_count", FTy);
+          CallInst::Create(dump, {}, "dump_count", &*it);
+        }
+      }
+    }
+  } else {
+    // report at the entry of F
+    BasicBlock &entry = F.getEntryBlock();
+    Builder.SetInsertPoint(&entry);
+
+    std::vector<Type *> FTyArgs;
+    FTyArgs.push_back(Type::getInt8PtrTy(F.getContext()));
+    FunctionType *FTy =
+        FunctionType::get(Type::getInt32Ty(entry.getContext()), FTyArgs, false);
+    FunctionCallee report = M->getOrInsertFunction("report_count", FTy);
+    Value *name = Builder.CreateGlobalStringPtr(fname, "name");
+    std::vector<Value *> args = {name};
+    CallInst::Create(report, args, "report_count", &*entry.begin());
+  }
   return true;
 }
 
 char ReportPass::ID = 0;
-static RegisterPass<ReportPass> X("func_report",
-                                  "Report Function Executed Pass", true, true);
+static RegisterPass<ReportPass> X("report", "Report Function Executed Pass",
+                                  true, true);
