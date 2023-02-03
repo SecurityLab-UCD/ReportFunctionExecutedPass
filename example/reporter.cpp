@@ -8,8 +8,17 @@ using namespace std;
 
 static unordered_map<string, int> count_table;
 
-extern "C" int report_count(const char *cs) {
-  string s = string(cs);
+extern "C" int report_count(int len, ...) {
+  string s = "";
+
+  // parse input string
+  va_list args;
+  va_start(args, len);
+  for (int i = 0; i < len; i++) {
+    char c = (char)va_arg(args, int);
+    s.push_back(c);
+  }
+
   if (count_table.find(s) == count_table.end()) {
     count_table.insert({s, 1});
   } else {

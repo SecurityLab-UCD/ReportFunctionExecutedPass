@@ -27,7 +27,6 @@ struct ReportPass : public FunctionPass {
 
 bool ReportPass::runOnFunction(Function &F) {
   std::string fname = F.getName().str();
-  IRBuilder<> Builder(F.getContext());
   Module *M = F.getParent();
 
   if (fname == "main") {
@@ -35,7 +34,6 @@ bool ReportPass::runOnFunction(Function &F) {
     for (Function::iterator bb = F.begin(); bb != F.end(); bb++) {
       for (BasicBlock::iterator it = bb->begin(); it != bb->end(); it++) {
         if ((std::string)it->getOpcodeName() == "ret") {
-          Builder.SetInsertPoint(&*bb, it);
           FunctionType *FTy = FunctionType::get(
               Type::getInt32Ty((*it).getContext()), {}, false);
           std::vector<Value *> args = {};
@@ -47,15 +45,21 @@ bool ReportPass::runOnFunction(Function &F) {
   } else {
     // report at the entry of F
     BasicBlock &entry = F.getEntryBlock();
-    Builder.SetInsertPoint(&entry);
 
-    std::vector<Type *> FTyArgs;
-    FTyArgs.push_back(Type::getInt8PtrTy(F.getContext()));
+    Type *ArgTy = Type::getInt32Ty(F.getContext());
     FunctionType *FTy =
-        FunctionType::get(Type::getInt32Ty(entry.getContext()), FTyArgs, false);
+        FunctionType::get(Type::getInt32Ty(entry.getContext()), ArgTy, true);
     FunctionCallee report = M->getOrInsertFunction("report_count", FTy);
-    Value *name = Builder.CreateGlobalStringPtr(fname, "name");
-    std::vector<Value *> args = {name};
+
+    // use char args to avoid allocating space in IR
+    Value *len =
+        ConstantInt::get(Type::getInt32Ty(F.getContext()), fname.length());
+    std::vector<Value *> args = {len};
+    for (char c : fname) {
+      Value *fc = ConstantInt::get(Type::getInt8Ty(F.getContext()), c);
+      args.push_back(fc);
+    }
+
     CallInst::Create(report, args, "report_count", &*entry.begin());
   }
   return true;
