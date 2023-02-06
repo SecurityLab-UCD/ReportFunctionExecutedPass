@@ -25,6 +25,22 @@ struct ReportPass : public FunctionPass {
 };
 } // namespace
 
+Constant *make_global_str(Module *M, std::string str) {
+  // https://lists.llvm.org/pipermail/llvm-dev/2010-June/032075.html
+  // https://stackoverflow.com/questions/51809274/llvm-defining-strings-and-arrays-via-c-api
+
+  LLVMContext &Ctx = M->getContext();
+  std::vector<llvm::Constant *> chars(str.size());
+  for (unsigned int i = 0; i < str.size(); i++) {
+    chars[i] = ConstantInt::get(Type::getInt8Ty(Ctx), str[i]);
+  }
+  auto init = ConstantArray::get(
+      ArrayType::get(Type::getInt8Ty(Ctx), chars.size()), chars);
+  GlobalVariable *v = new GlobalVariable(
+      *M, init->getType(), true, GlobalVariable::ExternalLinkage, init, str);
+  return ConstantExpr::getBitCast(v, Type::getInt8Ty(Ctx)->getPointerTo());
+}
+
 bool ReportPass::runOnFunction(Function &F) {
   std::string fname = F.getName().str();
   Module *M = F.getParent();
@@ -52,17 +68,13 @@ bool ReportPass::runOnFunction(Function &F) {
 
   } else {
 
-    Type *ArgTy = Type::getInt32Ty(Ctx);
-    FunctionType *FTy = FunctionType::get(Type::getInt32Ty(Ctx), ArgTy, true);
+    std::vector<Type *> ArgTys = {};
+    ArgTys.push_back(Type::getInt8PtrTy(Ctx));
+    FunctionType *FTy = FunctionType::get(Type::getInt32Ty(Ctx), ArgTys, true);
     FunctionCallee report = M->getOrInsertFunction("report_count", FTy);
 
-    // use char args to avoid allocating space in IR
-    Value *len = ConstantInt::get(Type::getInt32Ty(Ctx), fname.length());
-    args = {len};
-    for (char c : fname) {
-      Value *fc = ConstantInt::get(Type::getInt8Ty(Ctx), c);
-      args.push_back(fc);
-    }
+    Value *str_ptr = make_global_str(M, fname);
+    args = {str_ptr};
 
     CallInst::Create(report, args, "report_count", &*entry.begin());
   }
