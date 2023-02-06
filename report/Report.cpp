@@ -28,35 +28,39 @@ struct ReportPass : public FunctionPass {
 bool ReportPass::runOnFunction(Function &F) {
   std::string fname = F.getName().str();
   Module *M = F.getParent();
+  BasicBlock &entry = F.getEntryBlock();
+  LLVMContext &Ctx = F.getContext();
+  std::vector<Value *> args;
 
   if (fname == "main") {
-    // report at end of main, before it returns
-    for (Function::iterator bb = F.begin(); bb != F.end(); bb++) {
-      for (BasicBlock::iterator it = bb->begin(); it != bb->end(); it++) {
-        if ((std::string)it->getOpcodeName() == "ret") {
-          FunctionType *FTy = FunctionType::get(
-              Type::getInt32Ty((*it).getContext()), {}, false);
-          std::vector<Value *> args = {};
-          FunctionCallee dump = M->getOrInsertFunction("dump_count", FTy);
-          CallInst::Create(dump, {}, "dump_count", &*it);
-        }
-      }
-    }
-  } else {
-    // report at the entry of F
-    BasicBlock &entry = F.getEntryBlock();
+    // dump report at main exit
 
-    Type *ArgTy = Type::getInt32Ty(F.getContext());
-    FunctionType *FTy =
-        FunctionType::get(Type::getInt32Ty(entry.getContext()), ArgTy, true);
+    // find function pointer to dump_count
+    FunctionType *dump_FTy =
+        FunctionType::get(Type::getInt32Ty(Ctx), {}, false);
+    M->getOrInsertFunction("dump_count", dump_FTy);
+    Function *dump = M->getFunction("dump_count");
+    Value *dump_ptr = ConstantExpr::getBitCast(&*dump, Type::getInt8PtrTy(Ctx));
+
+    // insert call to atexit at entry of main
+    std::vector<Type *> atexit_argsTy = {Type::getInt8PtrTy(Ctx)};
+    FunctionType *atexit_FTy =
+        FunctionType::get(Type::getInt32Ty(Ctx), atexit_argsTy, false);
+    args = {dump_ptr};
+    FunctionCallee dump_atexit = M->getOrInsertFunction("atexit", atexit_FTy);
+    CallInst::Create(dump_atexit, args, "atexit", &*entry.begin());
+
+  } else {
+
+    Type *ArgTy = Type::getInt32Ty(Ctx);
+    FunctionType *FTy = FunctionType::get(Type::getInt32Ty(Ctx), ArgTy, true);
     FunctionCallee report = M->getOrInsertFunction("report_count", FTy);
 
     // use char args to avoid allocating space in IR
-    Value *len =
-        ConstantInt::get(Type::getInt32Ty(F.getContext()), fname.length());
-    std::vector<Value *> args = {len};
+    Value *len = ConstantInt::get(Type::getInt32Ty(Ctx), fname.length());
+    args = {len};
     for (char c : fname) {
-      Value *fc = ConstantInt::get(Type::getInt8Ty(F.getContext()), c);
+      Value *fc = ConstantInt::get(Type::getInt8Ty(Ctx), c);
       args.push_back(fc);
     }
 
