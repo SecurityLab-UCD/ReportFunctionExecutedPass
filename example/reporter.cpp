@@ -9,7 +9,7 @@ using namespace std;
 static unordered_map<string, int> count_table;
 
 extern "C" int report_count(const char *cstr) {
-  string s = (cstr);
+  string s = string(cstr);
 
   if (count_table.find(s) == count_table.end()) {
     count_table.insert({s, 1});
