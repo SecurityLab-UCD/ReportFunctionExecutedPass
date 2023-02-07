@@ -25,7 +25,7 @@ struct ReportPass : public FunctionPass {
 };
 } // namespace
 
-Constant *make_global_str(Module *M, std::string str) {
+Constant *MakeGlobalString(Module *M, std::string str) {
   // https://lists.llvm.org/pipermail/llvm-dev/2010-June/032075.html
   // https://stackoverflow.com/questions/51809274/llvm-defining-strings-and-arrays-via-c-api
 
@@ -46,7 +46,6 @@ bool ReportPass::runOnFunction(Function &F) {
   Module *M = F.getParent();
   BasicBlock &entry = F.getEntryBlock();
   LLVMContext &Ctx = F.getContext();
-  std::vector<Value *> args;
 
   if (fname == "main") {
     // dump report at main exit
@@ -59,24 +58,23 @@ bool ReportPass::runOnFunction(Function &F) {
     Value *dump_ptr = ConstantExpr::getBitCast(&*dump, Type::getInt8PtrTy(Ctx));
 
     // insert call to atexit at entry of main
-    std::vector<Type *> atexit_argsTy = {Type::getInt8PtrTy(Ctx)};
+    std::vector<Type *> atexit_argsTy({Type::getInt8PtrTy(Ctx)});
     FunctionType *atexit_FTy =
         FunctionType::get(Type::getInt32Ty(Ctx), atexit_argsTy, false);
-    args = {dump_ptr};
+    std::vector<Value *> atexit_Args({dump_ptr});
     FunctionCallee dump_atexit = M->getOrInsertFunction("atexit", atexit_FTy);
-    CallInst::Create(dump_atexit, args, "atexit", &*entry.begin());
+    CallInst::Create(dump_atexit, atexit_Args, "atexit", &*entry.begin());
 
   } else {
 
-    std::vector<Type *> ArgTys = {};
-    ArgTys.push_back(Type::getInt8PtrTy(Ctx));
+    std::vector<Type *> ArgTys({Type::getInt8PtrTy(Ctx)});
     FunctionType *FTy = FunctionType::get(Type::getInt32Ty(Ctx), ArgTys, true);
     FunctionCallee report = M->getOrInsertFunction("report_count", FTy);
 
-    Value *str_ptr = make_global_str(M, fname);
-    args = {str_ptr};
+    Value *str_ptr = MakeGlobalString(M, fname);
+    std::vector<Value *> report_Args({str_ptr});
 
-    CallInst::Create(report, args, "report_count", &*entry.begin());
+    CallInst::Create(report, report_Args, "report_count", &*entry.begin());
   }
   return true;
 }
