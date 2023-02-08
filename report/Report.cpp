@@ -51,17 +51,17 @@ bool ReportPass::runOnFunction(Function &F) {
     // dump report at main exit
 
     // find function pointer to dump_count
+    std::vector<Type*> dump_ArgTys({});
     FunctionType *dump_FTy =
-        FunctionType::get(Type::getVoidTy(Ctx), {}, false);
+        FunctionType::get(Type::getVoidTy(Ctx), dump_ArgTys, false);
     M->getOrInsertFunction("dump_count", dump_FTy);
     Function *dump = M->getFunction("dump_count");
-    Value *dump_ptr = ConstantExpr::getBitCast(&*dump, Type::getInt8PtrTy(Ctx));
 
     // insert call to atexit at entry of main
-    std::vector<Type *> atexit_argsTy({Type::getInt8PtrTy(Ctx)});
+    std::vector<Type *> atexit_ArgsTys({dump->getType()});
     FunctionType *atexit_FTy =
-        FunctionType::get(Type::getInt32Ty(Ctx), atexit_argsTy, false);
-    std::vector<Value *> atexit_Args({dump_ptr});
+        FunctionType::get(Type::getInt32Ty(Ctx), atexit_ArgsTys, false);
+    std::vector<Value *> atexit_Args({dump});
     FunctionCallee dump_atexit = M->getOrInsertFunction("atexit", atexit_FTy);
     CallInst::Create(dump_atexit, atexit_Args, "atexit", &*entry.begin());
 
