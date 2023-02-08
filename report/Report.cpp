@@ -52,7 +52,7 @@ bool ReportPass::runOnFunction(Function &F) {
 
     // find function pointer to dump_count
     FunctionType *dump_FTy =
-        FunctionType::get(Type::getInt32Ty(Ctx), {}, false);
+        FunctionType::get(Type::getVoidTy(Ctx), {}, false);
     M->getOrInsertFunction("dump_count", dump_FTy);
     Function *dump = M->getFunction("dump_count");
     Value *dump_ptr = ConstantExpr::getBitCast(&*dump, Type::getInt8PtrTy(Ctx));

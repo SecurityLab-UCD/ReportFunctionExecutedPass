@@ -19,10 +19,9 @@ extern "C" int report_count(const char *cstr) {
   return 0;
 }
 
-extern "C" int dump_count() {
+extern "C" void dump_count() {
   cerr << "--- dump record! ---\n";
   for (auto it : count_table) {
     cerr << it.first << ": " << it.second << "\n";
   }
-  return 0;
 }
