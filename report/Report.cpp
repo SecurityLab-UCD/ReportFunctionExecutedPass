@@ -34,6 +34,9 @@ Constant *MakeGlobalString(Module *M, std::string str) {
   for (unsigned int i = 0; i < str.size(); i++) {
     chars[i] = ConstantInt::get(Type::getInt8Ty(Ctx), str[i]);
   }
+  // add a zero terminator
+  chars.push_back(llvm::ConstantInt::get(Type::getInt8Ty(Ctx), 0));
+
   auto init = ConstantArray::get(
       ArrayType::get(Type::getInt8Ty(Ctx), chars.size()), chars);
   GlobalVariable *v = new GlobalVariable(
