@@ -26,10 +26,10 @@ extern "C" void dump_count() {
   }
 }
 
-extern "C" int report_param(int len...) {
+extern "C" int report_param(const char *meta, int len...) {
   va_list args;
   va_start(args, len);
-  string s = "";
+  string s = string(meta);
 
   for (int i = 0; i < len; i++) {
     int param = va_arg(args, int);
