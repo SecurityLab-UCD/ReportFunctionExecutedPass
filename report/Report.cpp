@@ -9,6 +9,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 
+#include <stdlib.h>
 #include <string>
 #include <vector>
 using namespace llvm;
@@ -83,19 +84,24 @@ bool ReportPass::runOnFunction(Function &F) {
     CallInst::Create(ReportExec, ReportArgs, "report_count", &*entry.begin());
 
     // report param
-    std::vector<Type *> ParamArgTys({Type::getInt32Ty(Ctx)});
+    std::vector<Type *> ParamArgTys(
+        {Type::getInt8PtrTy(Ctx), Type::getInt32Ty(Ctx)});
     FunctionType *ParamFTy =
         FunctionType::get(Type::getInt32Ty(Ctx), ParamArgTys, true);
     FunctionCallee ReportParam =
         M->getOrInsertFunction("report_param", ParamFTy);
 
     std::vector<Value *> ParamArgs;
-    std::string ParamNames = "";
+    std::string ParamMetadata = fname + ",";
+    llvm::raw_string_ostream rso(ParamMetadata);
     for (Value &Arg : F.args()) {
       ParamArgs.push_back(&Arg);
+      Arg.getType()->print(rso);
+      rso << ",";
     }
     APInt ParamArgsLen = APInt(32, ParamArgs.size(), false);
     ParamArgs.insert(ParamArgs.begin(), ConstantInt::get(Ctx, ParamArgsLen));
+    ParamArgs.insert(ParamArgs.begin(), MakeGlobalString(M, ParamMetadata));
 
     CallInst::Create(ReportParam, ParamArgs, "report_param", &*entry.begin());
   }
