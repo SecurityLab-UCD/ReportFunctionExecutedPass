@@ -70,6 +70,7 @@ bool ReportPass::runOnFunction(Function &F) {
 
   } else {
 
+    // report exec
     std::vector<Type *> ReportArgTys({Type::getInt8PtrTy(Ctx)});
     FunctionType *ReportFTy =
         FunctionType::get(Type::getInt32Ty(Ctx), ReportArgTys, false);
@@ -80,6 +81,23 @@ bool ReportPass::runOnFunction(Function &F) {
     std::vector<Value *> ReportArgs({FNameStrPtr});
 
     CallInst::Create(ReportExec, ReportArgs, "report_count", &*entry.begin());
+
+    // report param
+    std::vector<Type *> ParamArgTys({Type::getInt32Ty(Ctx)});
+    FunctionType *ParamFTy =
+        FunctionType::get(Type::getInt32Ty(Ctx), ParamArgTys, true);
+    FunctionCallee ReportParam =
+        M->getOrInsertFunction("report_param", ParamFTy);
+
+    std::vector<Value *> ParamArgs;
+    std::string ParamNames = "";
+    for (Value &Arg : F.args()) {
+      ParamArgs.push_back(&Arg);
+    }
+    APInt ParamArgsLen = APInt(32, ParamArgs.size(), false);
+    ParamArgs.insert(ParamArgs.begin(), ConstantInt::get(Ctx, ParamArgsLen));
+
+    CallInst::Create(ReportParam, ParamArgs, "report_param", &*entry.begin());
   }
   return true;
 }
