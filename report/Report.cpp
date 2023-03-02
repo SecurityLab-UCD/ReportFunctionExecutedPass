@@ -54,30 +54,32 @@ bool ReportPass::runOnFunction(Function &F) {
     // dump report at main exit
 
     // find function pointer to dump_count
-    std::vector<Type*> dump_ArgTys({});
-    FunctionType *dump_FTy =
+    std::vector<Type *> dump_ArgTys({});
+    FunctionType *DumpFTy =
         FunctionType::get(Type::getVoidTy(Ctx), dump_ArgTys, false);
-    M->getOrInsertFunction("dump_count", dump_FTy);
+    M->getOrInsertFunction("dump_count", DumpFTy);
     Function *dump = M->getFunction("dump_count");
 
     // insert call to atexit at entry of main
-    std::vector<Type *> atexit_ArgsTys({dump->getType()});
-    FunctionType *atexit_FTy =
-        FunctionType::get(Type::getInt32Ty(Ctx), atexit_ArgsTys, false);
-    std::vector<Value *> atexit_Args({dump});
-    FunctionCallee dump_atexit = M->getOrInsertFunction("atexit", atexit_FTy);
-    CallInst::Create(dump_atexit, atexit_Args, "atexit", &*entry.begin());
+    std::vector<Type *> AtexitArgsTys({dump->getType()});
+    FunctionType *AtexitFTy =
+        FunctionType::get(Type::getInt32Ty(Ctx), AtexitArgsTys, false);
+    std::vector<Value *> AtexitArgs({dump});
+    FunctionCallee DumpAtexit = M->getOrInsertFunction("atexit", AtexitFTy);
+    CallInst::Create(DumpAtexit, AtexitArgs, "atexit", &*entry.begin());
 
   } else {
 
-    std::vector<Type *> ArgTys({Type::getInt8PtrTy(Ctx)});
-    FunctionType *FTy = FunctionType::get(Type::getInt32Ty(Ctx), ArgTys, true);
-    FunctionCallee report = M->getOrInsertFunction("report_count", FTy);
+    std::vector<Type *> ReportArgTys({Type::getInt8PtrTy(Ctx)});
+    FunctionType *ReportFTy =
+        FunctionType::get(Type::getInt32Ty(Ctx), ReportArgTys, false);
+    FunctionCallee ReportExec =
+        M->getOrInsertFunction("report_count", ReportFTy);
 
-    Value *str_ptr = MakeGlobalString(M, fname);
-    std::vector<Value *> report_Args({str_ptr});
+    Value *FNameStrPtr = MakeGlobalString(M, fname);
+    std::vector<Value *> ReportArgs({FNameStrPtr});
 
-    CallInst::Create(report, report_Args, "report_count", &*entry.begin());
+    CallInst::Create(ReportExec, ReportArgs, "report_count", &*entry.begin());
   }
   return true;
 }
