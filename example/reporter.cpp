@@ -25,3 +25,18 @@ extern "C" void dump_count() {
     cerr << it.first << ": " << it.second << "\n";
   }
 }
+
+extern "C" int report_param(int len...) {
+  va_list args;
+  va_start(args, len);
+  string s = "";
+
+  for (int i = 0; i < len; i++) {
+    int param = va_arg(args, int);
+    s += to_string(param);
+  }
+
+  va_end(args);
+  cout << "=========> " << s << " <=========\n";
+  return 0;
+}
