@@ -38,7 +38,7 @@ extern "C" void dump_count() {
 
 vector<string> parse_meta(string meta) {
   vector<string> xs;
-  string delimiter = ",";
+  string delimiter = ">>=";
 
   size_t pos = 0;
   string token;
@@ -48,6 +48,18 @@ vector<string> parse_meta(string meta) {
     meta.erase(0, pos + delimiter.length());
   }
   return xs;
+}
+
+template <typename T> string to_string_ptr(const T &ptr) {
+  if (!ptr) {
+    return string("ptr: []");
+  }
+  // ! recursive for list
+  string str = "ptr: [";
+  for (int i = 0; ptr + i && i < 10; i++) {
+    str += to_string(*(ptr + i)) + ",";
+  }
+  return str + "]";
 }
 
 extern "C" int report_param(const char *meta, int len...) {
@@ -62,9 +74,24 @@ extern "C" int report_param(const char *meta, int len...) {
   // parse inputs
   string param;
   for (int i = 0; i < len; i++) {
-    if (types[i] == "i32") {
+    // using reference
+    // https://www.usna.edu/Users/cs/wcbrown/courses/F19SI413/lab/l13/lab.html#top
+
+    // NOTE: 'bool'/'char' are undefined behavior because arguments will be
+    // promoted to 'int'
+    if (types[i] == "i1" || types[i] == "i8" || types[i] == "i32") {
       param = to_string(va_arg(args, int));
+    } else if (types[i] == "i64") {
+      param = to_string(va_arg(args, long));
+    } else if (types[i] == "i1*" || types[i] == "i8*" || types[i] == "i32*") {
+      param = to_string_ptr(va_arg(args, int *));
+    } else if (types[i] == "i64*") {
+      param = to_string_ptr(va_arg(args, long *));
+    } else if (types[i].find('(') != string::npos) {
+      // function type
+      param = types[i];
     }
+
     // ToDo: to_string for other types
     inputs += param + ",";
   }
