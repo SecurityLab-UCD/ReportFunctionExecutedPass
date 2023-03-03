@@ -91,13 +91,17 @@ bool ReportPass::runOnFunction(Function &F) {
     FunctionCallee ReportParam =
         M->getOrInsertFunction("report_param", ParamFTy);
 
+    // use something that would never be a substring of function name or llvm
+    // type as delimiter, for now use ">>="
+    // "," will be in function type
+    std::string delimiter = ">>=";
+    std::string ParamMetadata = fname + delimiter;
     std::vector<Value *> ParamArgs;
-    std::string ParamMetadata = fname + ",";
     llvm::raw_string_ostream rso(ParamMetadata);
     for (Value &Arg : F.args()) {
       ParamArgs.push_back(&Arg);
       Arg.getType()->print(rso);
-      rso << ",";
+      rso << delimiter;
     }
     APInt ParamArgsLen = APInt(32, ParamArgs.size(), false);
     ParamArgs.insert(ParamArgs.begin(), ConstantInt::get(Ctx, ParamArgsLen));
