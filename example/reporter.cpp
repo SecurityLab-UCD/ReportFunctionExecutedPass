@@ -83,6 +83,11 @@ template <typename T> string to_string_ptr(const T &ptr) {
   return "ptr[" + to_string(*ptr) + "]";
 }
 
+bool is_int_ptr(string type) {
+  return type.find("i1*") != string::npos || type.find("i8*") != string::npos ||
+         type.find("i32*") != string::npos;
+}
+
 extern "C" int report_param(const char *meta, int len...) {
   va_list args;
   va_start(args, len);
@@ -104,12 +109,12 @@ extern "C" int report_param(const char *meta, int len...) {
       param = to_string(va_arg(args, int));
     } else if (types[i] == "i64") {
       param = to_string(va_arg(args, long));
-    } else if (types[i] == "i1*" || types[i] == "i8*" || types[i] == "i32*") {
+    } else if (is_int_ptr(types[i])) {
       param = to_string_ptr(va_arg(args, int *));
-    } else if (types[i] == "i64*") {
+    } else if (types[i].find("i64*") != string::npos) {
       param = to_string_ptr(va_arg(args, long *));
     } else if (types[i].find('(') != string::npos) { // function type
-      param = types[i];
+      param = "func_pointer";
     } else {
       // other types just use type as input encoding
       param = types[i];
