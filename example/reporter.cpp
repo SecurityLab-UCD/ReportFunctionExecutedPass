@@ -2,38 +2,64 @@
 #include <stdlib.h>
 
 #include <iostream>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+// for convenience
+using json = nlohmann::json;
 using namespace std;
 
-static unordered_map<string, int> count_table;
-// io table, key = function name, value = list of (input, output)
-static unordered_map<string, vector<pair<string, string>>> io_table;
+typedef struct Value {
+  string value;
+  string type;
 
-extern "C" int report_count(const char *cstr) {
-  string s = string(cstr);
+  Value(string val, string ty) : value(val), type(ty){};
+  string to_string() { return this->value + ":" + this->type; }
+} Value;
 
-  if (count_table.find(s) == count_table.end()) {
-    count_table.insert({s, 1});
-  } else {
-    count_table[s]++;
+void to_json(json &j, const Value &v) {
+  j = json{{"value", v.value}, {"type", v.type}};
+}
+
+void from_json(const json &j, Value &v) {
+  j.at("value").get_to(v.value);
+  j.at("type").get_to(v.type);
+}
+
+typedef Value Input;
+typedef Value Output;
+
+typedef struct Report {
+  int exec_cnt;
+  vector<pair<vector<Input>, Output>> exec_io;
+
+  Report() : exec_cnt(1), exec_io({}){};
+
+  void add(pair<vector<Input>, Output> io_pair) {
+    this->exec_cnt++;
+    this->exec_io.push_back(io_pair);
   }
-  return 0;
+} Report;
+
+void to_json(json &j, const Report &r) {
+  j = json{{"exec_cnt", r.exec_cnt}, {"exec_io", r.exec_io}};
+}
+
+static unordered_map<string, Report> report_table;
+
+extern "C" void report_count(string func_name) {
+  if (report_table.find(func_name) == report_table.end()) {
+    report_table.insert({func_name, Report()});
+  } else {
+    report_table[func_name].exec_cnt++;
+  }
 }
 
 extern "C" void dump_count() {
-  cerr << "--- dump record! ---\n";
-  for (auto it : count_table) {
-    cerr << it.first << ": " << it.second << "\n";
-  }
-  cerr << "--- dump io! ---\n";
-  for (auto it : io_table) {
-    cerr << "- " << it.first << ":\n";
-    for (auto io_pair : it.second) {
-      cerr << "\t" << io_pair.first << ": " << io_pair.second << "\n";
-    }
-  }
+  json j = report_table;
+  cerr << j << "\n";
 }
 
 vector<string> parse_meta(string meta) {
@@ -52,27 +78,23 @@ vector<string> parse_meta(string meta) {
 
 template <typename T> string to_string_ptr(const T &ptr) {
   if (!ptr) {
-    return string("ptr: []");
+    return string("ptr[]");
   }
   // ! recursive for list
-  string str = "ptr: [";
-  for (int i = 0; ptr + i && i < 10; i++) {
-    str += to_string(*(ptr + i)) + ",";
-  }
-  return str + "]";
+  return "ptr[" + to_string(*ptr) + "]";
 }
 
 extern "C" int report_param(const char *meta, int len...) {
   va_list args;
   va_start(args, len);
-  string inputs = "";
-  string output = "0"; // ToDo: get actual output of function call
   vector<string> meta_vec = parse_meta(string(meta));
   string func_name = meta_vec[0];
   vector<string> types = vector<string>(meta_vec.begin() + 1, meta_vec.end());
 
   // parse inputs
   string param;
+  vector<Value> inputs({});
+  Value output = Value("0", "i32"); // ToDo: get actual output of function call
   for (int i = 0; i < len; i++) {
     // using reference
     // https://www.usna.edu/Users/cs/wcbrown/courses/F19SI413/lab/l13/lab.html#top
@@ -87,23 +109,20 @@ extern "C" int report_param(const char *meta, int len...) {
       param = to_string_ptr(va_arg(args, int *));
     } else if (types[i] == "i64*") {
       param = to_string_ptr(va_arg(args, long *));
-    } else if (types[i].find('(') != string::npos) {
-      // function type
+    } else if (types[i].find('(') != string::npos) { // function type
+      param = types[i];
+    } else {
+      // other types just use type as input encoding
       param = types[i];
     }
 
     // ToDo: to_string for other types
-    inputs += param + ",";
+    inputs.push_back(Value(param, types[i]));
   }
   va_end(args);
 
-  pair<string, string> io_pair(inputs, output);
-  if (io_table.find(func_name) == io_table.end()) {
-    vector<pair<string, string>> new_io_list({io_pair});
-    io_table.insert({func_name, new_io_list});
-  } else {
-    io_table[func_name].push_back(io_pair);
-  }
+  report_count(func_name);
+  report_table[func_name].add({inputs, output});
 
   return 0;
 }
