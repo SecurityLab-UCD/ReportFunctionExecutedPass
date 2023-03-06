@@ -71,18 +71,6 @@ bool ReportPass::runOnFunction(Function &F) {
 
   } else {
 
-    // report exec
-    std::vector<Type *> ReportArgTys({Type::getInt8PtrTy(Ctx)});
-    FunctionType *ReportFTy =
-        FunctionType::get(Type::getInt32Ty(Ctx), ReportArgTys, false);
-    FunctionCallee ReportExec =
-        M->getOrInsertFunction("report_count", ReportFTy);
-
-    Value *FNameStrPtr = MakeGlobalString(M, fname);
-    std::vector<Value *> ReportArgs({FNameStrPtr});
-
-    CallInst::Create(ReportExec, ReportArgs, "report_count", &*entry.begin());
-
     // report param
     std::vector<Type *> ParamArgTys(
         {Type::getInt8PtrTy(Ctx), Type::getInt32Ty(Ctx)});
