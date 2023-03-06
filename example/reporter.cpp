@@ -117,10 +117,9 @@ extern "C" int report_param(const char *meta, int len...) {
       param = "func_pointer";
     } else {
       // other types just use type as input encoding
-      param = types[i];
+      param = "Unknown Type Value";
     }
 
-    // ToDo: to_string for other types
     inputs.push_back(Value(param, types[i]));
   }
   va_end(args);
