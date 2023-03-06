@@ -16,24 +16,23 @@ typedef struct Value {
   string type;
 
   Value(string val, string ty) : value(val), type(ty){};
-  string to_string() { return this->value + ":" + this->type; }
 } Value;
 
 void to_json(json &j, const Value &v) {
   j = json{{"value", v.value}, {"type", v.type}};
 }
 
-void from_json(const json &j, Value &v) {
-  j.at("value").get_to(v.value);
-  j.at("type").get_to(v.type);
-}
-
 typedef Value Input;
 typedef Value Output;
+typedef pair<vector<Input>, Output> IOPair;
+
+void to_json(json &j, const IOPair &io) {
+  j = json{{"inputs", io.first}, {"output", io.second}};
+}
 
 typedef struct Report {
   int exec_cnt;
-  vector<pair<vector<Input>, Output>> exec_io;
+  vector<IOPair> exec_io;
 
   Report() : exec_cnt(1), exec_io({}){};
 
