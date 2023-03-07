@@ -99,15 +99,31 @@ bool ReportPass::runOnFunction(Function &F) {
     bool has_rnt = false;
     for (BasicBlock &BB : F) {
       Term = BB.getTerminator();
+
+      // match on different type of terminator
+      // empty else-if branches are reserved for later changes
       if (ReturnInst *RI = dyn_cast<ReturnInst>(Term)) {
         if (RI->getNumOperands() == 1) {
           Value *ReturnValue = RI->getOperand(0);
           ParamArgs.push_back(ReturnValue);
           has_rnt = true;
         }
+      } else if (SwitchInst *SI = dyn_cast<SwitchInst>(Term)) {
+      } else if (BranchInst *BI = dyn_cast<BranchInst>(Term)) {
+      } else if (IndirectBrInst *IBI = dyn_cast<IndirectBrInst>(Term)) {
+      } else if (CallBrInst *CBI = dyn_cast<CallBrInst>(Term)) {
+      } else if (InvokeInst *II = dyn_cast<InvokeInst>(Term)) {
+      } else if (ResumeInst *RI = dyn_cast<ResumeInst>(Term)) {
+      } else if (CatchSwitchInst *CSI = dyn_cast<CatchSwitchInst>(Term)) {
+      } else if (CatchReturnInst *CRI = dyn_cast<CatchReturnInst>(Term)) {
+      } else if (CleanupReturnInst *CuRI = dyn_cast<CleanupReturnInst>(Term)) {
+      } else if (UnreachableInst *UI = dyn_cast<UnreachableInst>(Term)) {
+        errs() << F.getName() << " Found Unreachable Terminator:\n\t";
+        UI->print(errs());
+      } else {
+        errs() << "Unknown Terminator:\n\t";
+        Term->print(errs());
       }
-      // ToDo: match all terminator
-      // brach/switch << I dont care
     }
 
     // add rnt type to the end of type string
