@@ -91,16 +91,19 @@ extern "C" int report_param(bool has_rnt, const char *param_meta, int len...) {
 
     // NOTE: 'bool'/'char' are undefined behavior because arguments will be
     // promoted to 'int'
+    bool is_val_ptr = false;
     if (types[i] == "i1" || types[i] == "i8" || types[i] == "i32") {
       param = to_string(va_arg(args, int));
     } else if (types[i] == "i64") {
       param = to_string(va_arg(args, long));
-    } else if (is_int_ptr(types[i])) {
-      param = to_string_ptr(va_arg(args, int *));
-    } else if (types[i].find("i64*") != string::npos) {
-      param = to_string_ptr(va_arg(args, long *));
     } else if (types[i].find('(') != string::npos) { // function type
       param = "func_pointer";
+    } else if (is_int_ptr(types[i])) {
+      param = to_string_ptr(va_arg(args, int *));
+      is_val_ptr = true;
+    } else if (types[i].find("i64*") != string::npos) {
+      param = to_string_ptr(va_arg(args, long *));
+      is_val_ptr = true;
     } else {
       // other types just use type as input encoding
       param = "Unknown Type Value";
@@ -109,6 +112,11 @@ extern "C" int report_param(bool has_rnt, const char *param_meta, int len...) {
     Value v = Value(param, types[i]);
     if (i == len) {
       outputs.push_back(v);
+    } else if (is_val_ptr) {
+      // if input is a pointer to a value
+      // we consider it also as a output since it might be modified
+      outputs.push_back(v);
+      inputs.push_back(v);
     } else {
       inputs.push_back(v);
     }
