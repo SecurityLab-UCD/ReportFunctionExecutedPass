@@ -83,9 +83,14 @@ bool ReportPass::runOnFunction(Function &F) {
     // type as delimiter, for now use ">>="
     // "," will be in function type
     std::string delimiter = ">>=";
-    std::string ParamMetadata = fname + delimiter;
+    // NOTE type string
+    // the first token is function name
+    // the middle tokens are parameter types
+    // the last token is return type
+    // func_name>>=param1_type>>=...>>=rnt_type>>=
+    std::string TypeStr = fname + delimiter;
     std::vector<Value *> ParamArgs;
-    llvm::raw_string_ostream rso(ParamMetadata);
+    llvm::raw_string_ostream rso(TypeStr);
     for (Value &Arg : F.args()) {
       ParamArgs.push_back(&Arg);
       Arg.getType()->print(rso);
@@ -132,7 +137,7 @@ bool ReportPass::runOnFunction(Function &F) {
       rso << delimiter;
     }
 
-    ParamArgs.insert(ParamArgs.begin(), MakeGlobalString(M, ParamMetadata));
+    ParamArgs.insert(ParamArgs.begin(), MakeGlobalString(M, TypeStr));
 
     APInt HasRnt = APInt(1, has_rnt, false);
     ParamArgs.insert(ParamArgs.begin(), ConstantInt::get(Ctx, HasRnt));
