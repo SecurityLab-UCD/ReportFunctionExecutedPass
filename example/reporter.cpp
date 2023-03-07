@@ -28,29 +28,13 @@ void to_json(json &j, const IOPair &io) {
   j = json{{"inputs", io.first}, {"outputs", io.second}};
 }
 
-typedef struct Report {
-  int exec_cnt;
-  vector<IOPair> exec_io;
+static unordered_map<string, vector<IOPair>> report_table;
 
-  Report() : exec_cnt(1), exec_io({}){};
-
-  void add(IOPair io_pair) {
-    this->exec_cnt++;
-    this->exec_io.push_back(io_pair);
-  }
-} Report;
-
-void to_json(json &j, const Report &r) {
-  j = json{{"exec_cnt", r.exec_cnt}, {"exec_io", r.exec_io}};
-}
-
-static unordered_map<string, Report> report_table;
-
-extern "C" void report_count(string func_name) {
+void report(string func_name, IOPair io) {
   if (report_table.find(func_name) == report_table.end()) {
-    report_table.insert({func_name, Report()});
+    report_table.insert({func_name, {io}});
   } else {
-    report_table[func_name].exec_cnt++;
+    report_table[func_name].push_back(io);
   }
 }
 
@@ -131,8 +115,6 @@ extern "C" int report_param(bool has_rnt, const char *param_meta, int len...) {
   }
   va_end(args);
 
-  report_count(func_name);
-  report_table[func_name].add({inputs, outputs});
-
+  report(func_name, {inputs, outputs});
   return 0;
 }
