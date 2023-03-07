@@ -88,18 +88,19 @@ bool is_int_ptr(string type) {
          type.find("i32*") != string::npos;
 }
 
-extern "C" int report_param(const char *meta, int len...) {
+extern "C" int report_param(bool has_rnt, const char *param_meta, int len...) {
   va_list args;
   va_start(args, len);
-  vector<string> meta_vec = parse_meta(string(meta));
+  vector<string> meta_vec = parse_meta(string(param_meta));
   string func_name = meta_vec[0];
   vector<string> types = vector<string>(meta_vec.begin() + 1, meta_vec.end());
 
   // parse inputs
   string param;
   vector<Value> inputs({});
-  Value output = Value("0", "i32"); // ToDo: get actual output of function call
-  for (int i = 0; i < len; i++) {
+  Value output = Value("void", "void"); // ToDo: get actual output of function call
+
+  for (int i = 0; i < len + (int)has_rnt; i++) {
     // using reference
     // https://www.usna.edu/Users/cs/wcbrown/courses/F19SI413/lab/l13/lab.html#top
 
@@ -120,7 +121,12 @@ extern "C" int report_param(const char *meta, int len...) {
       param = "Unknown Type Value";
     }
 
-    inputs.push_back(Value(param, types[i]));
+    if (has_rnt && i == len) {
+      output.value = param;
+      output.type = types[i];
+    } else {
+      inputs.push_back(Value(param, types[i]));
+    }
   }
   va_end(args);
 
