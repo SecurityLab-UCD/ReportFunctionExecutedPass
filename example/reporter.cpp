@@ -22,12 +22,10 @@ void to_json(json &j, const Value &v) {
   j = json{{"value", v.value}, {"type", v.type}};
 }
 
-typedef Value Input;
-typedef Value Output;
-typedef pair<vector<Input>, Output> IOPair;
+typedef pair<vector<Value>, vector<Value>> IOPair;
 
 void to_json(json &j, const IOPair &io) {
-  j = json{{"inputs", io.first}, {"output", io.second}};
+  j = json{{"inputs", io.first}, {"outputs", io.second}};
 }
 
 typedef struct Report {
@@ -36,7 +34,7 @@ typedef struct Report {
 
   Report() : exec_cnt(1), exec_io({}){};
 
-  void add(pair<vector<Input>, Output> io_pair) {
+  void add(IOPair io_pair) {
     this->exec_cnt++;
     this->exec_io.push_back(io_pair);
   }
@@ -98,7 +96,10 @@ extern "C" int report_param(bool has_rnt, const char *param_meta, int len...) {
   // parse inputs
   string param;
   vector<Value> inputs({});
-  Value output = Value("void", "void"); // ToDo: get actual output of function call
+  vector<Value> outputs({});
+  if (!has_rnt) {
+    outputs.push_back(Value("void", "void"));
+  }
 
   for (int i = 0; i < len + (int)has_rnt; i++) {
     // using reference
@@ -121,17 +122,17 @@ extern "C" int report_param(bool has_rnt, const char *param_meta, int len...) {
       param = "Unknown Type Value";
     }
 
-    if (has_rnt && i == len) {
-      output.value = param;
-      output.type = types[i];
+    Value v = Value(param, types[i]);
+    if (i == len) {
+      outputs.push_back(v);
     } else {
-      inputs.push_back(Value(param, types[i]));
+      inputs.push_back(v);
     }
   }
   va_end(args);
 
   report_count(func_name);
-  report_table[func_name].add({inputs, output});
+  report_table[func_name].add({inputs, outputs});
 
   return 0;
 }
