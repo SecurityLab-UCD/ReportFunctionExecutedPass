@@ -73,7 +73,7 @@ bool ReportPass::runOnFunction(Function &F) {
 
     // report param
     std::vector<Type *> ParamArgTys(
-        {Type::getInt8PtrTy(Ctx), Type::getInt32Ty(Ctx)});
+        {Type::getInt1Ty(Ctx), Type::getInt8PtrTy(Ctx), Type::getInt32Ty(Ctx)});
     FunctionType *ParamFTy =
         FunctionType::get(Type::getInt32Ty(Ctx), ParamArgTys, true);
     FunctionCallee ReportParam =
@@ -93,9 +93,35 @@ bool ReportPass::runOnFunction(Function &F) {
     }
     APInt ParamArgsLen = APInt(32, ParamArgs.size(), false);
     ParamArgs.insert(ParamArgs.begin(), ConstantInt::get(Ctx, ParamArgsLen));
+
+    // find rnt value and terminating instruction
+    Instruction *Term = &*entry.begin();
+    bool has_rnt = false;
+    for (BasicBlock &BB : F) {
+      Term = BB.getTerminator();
+      if (ReturnInst *RI = dyn_cast<ReturnInst>(Term)) {
+        if (RI->getNumOperands() == 1) {
+          Value *ReturnValue = RI->getOperand(0);
+          ParamArgs.push_back(ReturnValue);
+          has_rnt = true;
+        }
+      }
+      // ToDo: match all terminator
+      // brach/switch << I dont care
+    }
+
+    // add rnt type to the end of type string
+    if (has_rnt) {
+      F.getReturnType()->print(rso);
+      rso << delimiter;
+    }
+
     ParamArgs.insert(ParamArgs.begin(), MakeGlobalString(M, ParamMetadata));
 
-    CallInst::Create(ReportParam, ParamArgs, "report_param", &*entry.begin());
+    APInt HasRnt = APInt(1, has_rnt, false);
+    ParamArgs.insert(ParamArgs.begin(), ConstantInt::get(Ctx, HasRnt));
+
+    CallInst::Create(ReportParam, ParamArgs, "report_param", Term);
   }
   return true;
 }
