@@ -39,7 +39,7 @@ int main() {
   }
 
   int len = 5;
-  int *arr = malloc(len * sizeof(int));
+  int *arr = (int *)malloc(len * sizeof(int));
   for (int i = 0; i < len; i++) {
     arr[i] = i;
   }
