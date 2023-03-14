@@ -70,6 +70,9 @@ bool is_int_ptr(string type) {
          type.find("i32*") != string::npos;
 }
 
+const vector<string> FLOAT_TYPES = {"half",  "bfloat",   "float",    "double",
+                                    "fp128", "x86_fp80", "ppc_fp128"};
+
 extern "C" int report_param(bool has_rnt, const char *param_meta, int len...) {
   va_list args;
   va_start(args, len);
@@ -86,17 +89,30 @@ extern "C" int report_param(bool has_rnt, const char *param_meta, int len...) {
   }
 
   for (int i = 0; i < len + (int)has_rnt; i++) {
-    // using reference
-    // https://www.usna.edu/Users/cs/wcbrown/courses/F19SI413/lab/l13/lab.html#top
 
-    // NOTE: 'bool'/'char' are undefined behavior because arguments will be
-    // promoted to 'int'
+    // NOTE: smaller types will be promoted to larger int/float/long/etc.
     bool is_val_ptr = false;
-    if (types[i] == "i1" || types[i] == "i8" || types[i] == "i32") {
-      param = to_string(va_arg(args, int));
-    } else if (types[i] == "i64") {
-      param = to_string(va_arg(args, long));
-    } else if (types[i].find('(') != string::npos) { // function type
+
+    if (types[i][0] == 'i' && types[i].find("*") == string::npos) {
+      // * Integer Type
+      int size = atoi(types[i].substr(1).c_str());
+      if (size <= 32) {
+        param = to_string(va_arg(args, int));
+      } else {
+        param = to_string(va_arg(args, long));
+      }
+    } else if (find(FLOAT_TYPES.begin(), FLOAT_TYPES.end(), types[i]) !=
+               FLOAT_TYPES.end()) {
+      // * Floating-Point Types
+      auto it = find(FLOAT_TYPES.begin(), FLOAT_TYPES.end(), types[i]);
+      int fp_idx = it - FLOAT_TYPES.begin();
+      if (fp_idx <= 4) {
+        param = to_string(va_arg(args, double));
+      } else {
+        param = to_string(va_arg(args, long double));
+      }
+    } else if (types[i].find('(') != string::npos) {
+      // * function type
       param = "func_pointer";
     } else if (is_int_ptr(types[i])) {
       param = to_string_ptr(va_arg(args, int *));
