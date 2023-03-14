@@ -24,6 +24,7 @@ void print_arr(int *arr, int len) {
 
 int test_func_ptr(void (*func)(int *, int)) { return 0; }
 
+int test_pointer(int *pp) { return printf("%d\n", *pp); }
 int test_pointer_pointer(int **pp) { return printf("%d\n", **pp); }
 
 void print_node(struct Node n) { printf("%d %d\n", n.val1, n.val2); }
@@ -31,9 +32,9 @@ void print_node(struct Node n) { printf("%d %d\n", n.val1, n.val2); }
 double add(double a, double b) { return a + b; }
 
 int main() {
-  double x = 1.0;
-  double y = 2.0;
-  double z = add(x, y);
-  printf("%f\n", z);
+  int x = 5;
+  int *p = &x;
+  test_pointer(p);
+  test_pointer_pointer(&p);
   return 0;
 }

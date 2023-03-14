@@ -18,4 +18,4 @@ example: reporter.o lib.o
 	$(CXX) lib.o reporter.o example2.ll -o example
 
 clean:
-	rm *.o example *.ll
+	rm *.o example *.ll out.json
