@@ -7,11 +7,23 @@
 
 ## Build
 
+### Building the Pass
+
 ```sh
 mkdir build && cd build
 cmake ..
 make
 cd ..
+```
+
+### Building the Reporter
+
+```
+# get json lib
+mkdir -p include
+mkdir -p include/nlohmann
+wget https://github.com/nlohmann/json/releases/download/v3.11.2/json.hpp -O include/nlohmann/json.hpp
+make
 ```
 
 ## Usage
