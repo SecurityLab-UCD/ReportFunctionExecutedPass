@@ -30,6 +30,11 @@ void to_json(json &j, const IOPair &io) {
 
 static unordered_map<string, vector<IOPair>> report_table;
 
+/**
+ * @brief Report the input and output of a function to report_table
+ * @param func_name: name of the function
+ * @param io: input and output of the function
+ */
 void report(string func_name, IOPair io) {
   if (report_table.find(func_name) == report_table.end()) {
     report_table.insert({func_name, {io}});
@@ -57,21 +62,75 @@ vector<string> parse_meta(string meta) {
   return xs;
 }
 
-template <typename T> string to_string_ptr(const T &ptr) {
+const vector<string> FLOAT_TYPES = {"half",  "bfloat",   "float",    "double",
+                                    "fp128", "x86_fp80", "ppc_fp128"};
+
+bool is_int(string type) {
+  return type[0] == 'i' && type.find("*") == string::npos;
+}
+
+bool is_float(string type) {
+  return find(FLOAT_TYPES.begin(), FLOAT_TYPES.end(), type) !=
+         FLOAT_TYPES.end();
+}
+
+void *dereferenceNTimes(void **ptr, int n) {
+  void *pp;
+  for (int i = 0; i < n; i++) {
+    pp = reinterpret_cast<void *>(*ptr);
+  }
+  return pp;
+}
+
+/**
+ * @brief Convert a single-level reference pointer to a string of its referent
+ * @param ptr: pointer to the referent casted to void*
+ * @param base_type: base type of the pointer
+ * @return string representation of the referent
+ */
+string to_string_ptr(void *ptr, string base_type) {
   if (!ptr) {
     return string("ptr[]");
   }
-  // ! recursive for list
-  return "ptr[" + to_string(*ptr) + "]";
+  string val;
+  if (is_int(base_type)) {
+    // * Integer Type
+    int size = atoi(base_type.substr(1).c_str());
+    if (size <= 32) {
+      val = to_string(*(int *)ptr);
+    } else {
+      val = to_string(*(long *)ptr);
+    }
+  } else if (is_float(base_type)) {
+    // * Floating-Point Types
+    auto it = find(FLOAT_TYPES.begin(), FLOAT_TYPES.end(), base_type);
+    int fp_idx = it - FLOAT_TYPES.begin();
+    if (fp_idx <= 4) {
+      val = to_string(*(double *)ptr);
+    } else {
+      val = to_string(*(long double *)ptr);
+    }
+  } else {
+    return "ptr[]: base type not supported";
+  }
+  return val;
 }
 
-bool is_int_ptr(string type) {
-  return type.find("i1*") != string::npos || type.find("i8*") != string::npos ||
-         type.find("i32*") != string::npos;
+/**
+ * @brief Convert a multi-level reference pointer to a string of its referent
+ * @param ptr: pointer to the referent casted to void**
+ * @param base_type: base type of the pointer
+ * @param ptr_level: number of levels of reference (e.g. int** is ptr_level=2)
+ * @return string representation of the referent
+ */
+string to_string_ptr(void **ptr, string base_type, int ptr_level) {
+  if (!ptr) {
+    return string("ptr[]");
+  }
+  string val = "";
+  void *deref_ptr = dereferenceNTimes(ptr, ptr_level);
+  return "ptr[" + to_string_ptr(deref_ptr, base_type) + "]";
 }
-
-const vector<string> FLOAT_TYPES = {"half",  "bfloat",   "float",    "double",
-                                    "fp128", "x86_fp80", "ppc_fp128"};
 
 extern "C" int report_param(bool has_rnt, const char *param_meta, int len...) {
   va_list args;
@@ -93,7 +152,7 @@ extern "C" int report_param(bool has_rnt, const char *param_meta, int len...) {
     // NOTE: smaller types will be promoted to larger int/float/long/etc.
     bool is_val_ptr = false;
 
-    if (types[i][0] == 'i' && types[i].find("*") == string::npos) {
+    if (is_int(types[i])) {
       // * Integer Type
       int size = atoi(types[i].substr(1).c_str());
       if (size <= 32) {
@@ -101,8 +160,7 @@ extern "C" int report_param(bool has_rnt, const char *param_meta, int len...) {
       } else {
         param = to_string(va_arg(args, long));
       }
-    } else if (find(FLOAT_TYPES.begin(), FLOAT_TYPES.end(), types[i]) !=
-               FLOAT_TYPES.end()) {
+    } else if (is_float(types[i])) {
       // * Floating-Point Types
       auto it = find(FLOAT_TYPES.begin(), FLOAT_TYPES.end(), types[i]);
       int fp_idx = it - FLOAT_TYPES.begin();
@@ -112,13 +170,29 @@ extern "C" int report_param(bool has_rnt, const char *param_meta, int len...) {
         param = to_string(va_arg(args, long double));
       }
     } else if (types[i].find('(') != string::npos) {
-      // * function type
+      // * Function Type
       param = "func_pointer";
-    } else if (is_int_ptr(types[i])) {
-      param = to_string_ptr(va_arg(args, int *));
-      is_val_ptr = true;
-    } else if (types[i].find("i64*") != string::npos) {
-      param = to_string_ptr(va_arg(args, long *));
+    } else if (types[i][types[i].length() - 1] == '*') {
+      // * Pointer Type
+      // i32**: base_type = i32, ptr_level = 2
+      string base_type = "";
+      int ptr_level = 0;
+      for (char c : types[i]) {
+        if (c == '*') {
+          ptr_level++;
+        } else {
+          base_type += c;
+        }
+      }
+
+      if (ptr_level == 1) {
+        void *ptr = va_arg(args, void *);
+        param = to_string_ptr(ptr, base_type);
+      } else {
+        void **ptr = va_arg(args, void **);
+        param = to_string_ptr(ptr, base_type, ptr_level);
+      }
+
       is_val_ptr = true;
     } else {
       // other types just use type as input encoding
