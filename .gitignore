@@ -1,6 +1,7 @@
 build
 *.s
 *.o
+*.so
 *.bc
 *.ll
 a.out
