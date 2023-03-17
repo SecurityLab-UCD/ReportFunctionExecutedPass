@@ -150,3 +150,10 @@ bool ReportPass::runOnFunction(Function &F) {
 char ReportPass::ID = 0;
 static RegisterPass<ReportPass> X("report", "Report Function Executed Pass",
                                   true, true);
+
+static void registerMyPass(const PassManagerBuilder &,
+                           legacy::PassManagerBase &PM) {
+  PM.add(new ReportPass());
+}
+static RegisterStandardPasses
+    RegisterMyPass(PassManagerBuilder::EP_EarlyAsPossible, registerMyPass);

@@ -4,6 +4,9 @@ CXX = clang++
 REPORTER_INC = -I$(shell pwd)/include
 LLVM_INC = -I$(HOME)/clang+llvm/include
 LLVM_LIB = -I$(HOME)/clang+llvm/lib
+
+REPORT_FLAGS = -Xclang -load -Xclang ./report/libReportPass.so -flegacy-pass-manager
+
 all: example
 
 reporter.o:
@@ -13,14 +16,10 @@ pass:
 	$(CXX) -g -shared -fPIC $(LLVM_INC) $(LLVM_LIB) -o report/libReportPass.so report/Report.cpp -fno-rtti
 
 lib.o: lib.h pass
-	$(CC) -S -emit-llvm -Xclang -disable-O0-optnone lib.c -o lib.ll
-	opt -load ./report/libReportPass.so -report -enable-new-pm=0 -S lib.ll > lib2.ll
-	$(CC) -g -c lib2.ll -o lib.o
+	$(CC) $(REPORT_FLAGS) -g -c lib.c
 
 example: reporter.o lib.o pass
-	$(CC) -S -emit-llvm -Xclang -disable-O0-optnone example.c -o example.ll
-	opt -load ./report/libReportPass.so -report -enable-new-pm=0 -S example.ll > example2.ll
-	$(CXX) lib.o reporter.o example2.ll -o example
+	$(CXX) reporter.o $(REPORT_FLAGS) lib.o example.c -o example
 
 clean:
 	rm *.o example *.ll out.json
