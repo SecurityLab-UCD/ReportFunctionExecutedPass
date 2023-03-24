@@ -11,6 +11,7 @@
 
 #include <stdlib.h>
 #include <string>
+#include <tuple>
 #include <vector>
 using namespace llvm;
 
@@ -43,6 +44,49 @@ Constant *MakeGlobalString(Module *M, std::string str) {
   GlobalVariable *v = new GlobalVariable(
       *M, init->getType(), true, GlobalVariable::ExternalLinkage, init, str);
   return ConstantExpr::getBitCast(v, Type::getInt8Ty(Ctx)->getPointerTo());
+}
+
+/**
+ * @brief Expand a struct value into a vector of its elements
+ * @param v: struct value that can be casted to ConstantStruct
+ * @param expend_level: max number of levels of struct to expand if nested
+ * @return vector of values in the struct
+ */
+std::vector<Value *> ExpandStruct(Value *v, int expend_level = 5) {
+  std::vector<Value *> Expanded;
+  if (expend_level == 0) {
+    return Expanded;
+  }
+
+  int len = v->getType()->getStructNumElements();
+  auto *cs = dyn_cast<ConstantStruct>(v);
+  if (cs) {
+    for (unsigned i = 0; i < len; i++) {
+      Value *Elem = cs->getAggregateElement(i);
+      Type *ElemTy = cs->getType()->getStructElementType(i);
+
+      // if where is a struct inside a struct, recursively expand it
+      if (ElemTy->isStructTy()) {
+        std::vector<Value *> sub = ExpandStruct(Elem, expend_level - 1);
+        Expanded.insert(Expanded.end(), sub.begin(), sub.end());
+      } else {
+        Expanded.push_back(Elem);
+      }
+    }
+  } else {
+    errs() << "cannot expand non-constant struct\n";
+  }
+  return Expanded;
+}
+
+std::string GetTyStr(std::vector<Value *> &elems, std::string delimiter) {
+  std::string TyStr;
+  llvm::raw_string_ostream rso(TyStr);
+  for (Value *elem : elems) {
+    elem->getType()->print(rso);
+    rso << delimiter;
+  }
+  return TyStr;
 }
 
 bool ReportPass::runOnFunction(Function &F) {
@@ -92,14 +136,23 @@ bool ReportPass::runOnFunction(Function &F) {
     std::vector<Value *> ParamArgs;
     llvm::raw_string_ostream rso(TypeStr);
     for (Value &Arg : F.args()) {
-      ParamArgs.push_back(&Arg);
-      Arg.getType()->print(rso);
+      if (Arg.getType()->isStructTy()) {
+        std::vector<Value *> elems = ExpandStruct(&Arg);
+        ParamArgs.insert(ParamArgs.end(), elems.begin(), elems.end());
+
+        // todo: get this type string from ExpandStruct
+        rso << GetTyStr(elems, delimiter);
+      } else {
+        ParamArgs.push_back(&Arg);
+        Arg.getType()->print(rso);
+      }
       rso << delimiter;
     }
     APInt ParamArgsLen = APInt(32, ParamArgs.size(), false);
     ParamArgs.insert(ParamArgs.begin(), ConstantInt::get(Ctx, ParamArgsLen));
 
     // find rnt value and terminating instruction
+    // todo: expand return struct type
     Instruction *Term = &*entry.begin();
     bool has_rnt = false;
     for (BasicBlock &BB : F) {
