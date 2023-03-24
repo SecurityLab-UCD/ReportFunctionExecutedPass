@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <nlohmann/json.hpp>
+#include <regex>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -73,6 +74,17 @@ bool is_float(string type) {
   return find(FLOAT_TYPES.begin(), FLOAT_TYPES.end(), type) !=
          FLOAT_TYPES.end();
 }
+
+bool is_pointer_ty(string type) { return type.back() == '*'; }
+
+/**
+ * todo: support struct
+ * https://llvm.org/docs/LangRef.html#structure-type
+ * @brief Check if a type is a struct
+ * @param type: type to check
+ * @return true if the type is a struct
+ */
+bool is_struct(string type) { return false; }
 
 void *dereferenceNTimes(void **ptr, int n) {
   void *pp;
@@ -172,7 +184,7 @@ extern "C" int report_param(bool has_rnt, const char *param_meta, int len...) {
     } else if (types[i].find('(') != string::npos) {
       // * Function Type
       param = "func_pointer";
-    } else if (types[i][types[i].length() - 1] == '*') {
+    } else if (is_pointer_ty(types[i])) {
       // * Pointer Type
       // i32**: base_type = i32, ptr_level = 2
       string base_type = "";
@@ -194,6 +206,10 @@ extern "C" int report_param(bool has_rnt, const char *param_meta, int len...) {
       }
 
       is_val_ptr = true;
+    } else if (is_struct(types[0])) {
+      // * Struct Type
+      // todo: decode as the type of  first element
+      param = "a struct";
     } else {
       // other types just use type as input encoding
       param = "Unknown Type Value";
