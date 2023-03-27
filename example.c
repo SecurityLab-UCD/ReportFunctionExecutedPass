@@ -10,31 +10,24 @@
 
 #include "lib.h"
 
-struct Node {
-  int val1;
-  int val2;
+struct LargeStruct {
+  int a;
+  int b;
+  float c;
+  float d;
+  double e;
+  double f;
 };
 
-void print_arr(int *arr, int len) {
-  for (int i = 0; i < len; i++) {
-    printf("%d, ", arr[i]);
-  }
-  printf("\n");
+double foo(struct LargeStruct s) {
+  double e = s.e;
+  double f = s.f;
+  return e + f;
 }
 
-int test_func_ptr(void (*func)(int *, int)) { return 0; }
-
-int test_pointer(int *pp) { return printf("%d\n", *pp); }
-int test_pointer_pointer(int **pp) { return printf("%d\n", **pp); }
-
-void print_node(struct Node n) { printf("%d %d\n", n.val1, n.val2); }
-
-double add(double a, double b) { return a + b; }
-
 int main() {
-  int x = 5;
-  int *p = &x;
-  test_pointer(p);
-  test_pointer_pointer(&p);
+  struct LargeStruct s = {1, 2, 3.0, 4.0, 5.0, 6.0};
+  double result = foo(s);
+  printf("result = %f\n", result);
   return 0;
 }
