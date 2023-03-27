@@ -117,7 +117,9 @@ string to_string_ptr(void *ptr, string base_type) {
     // * Floating-Point Types
     auto it = find(FLOAT_TYPES.begin(), FLOAT_TYPES.end(), base_type);
     int fp_idx = it - FLOAT_TYPES.begin();
-    if (fp_idx <= 4) {
+    if (fp_idx < 3) {
+      val = to_string(*(float *)ptr);
+    } else if (fp_idx == 3) {
       val = to_string(*(double *)ptr);
     } else {
       val = to_string(*(long double *)ptr);
