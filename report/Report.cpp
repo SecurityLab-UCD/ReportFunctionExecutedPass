@@ -48,9 +48,8 @@ Constant *MakeGlobalString(Module *M, std::string str) {
   return ConstantExpr::getBitCast(v, Type::getInt8Ty(Ctx)->getPointerTo());
 }
 
-bool isStructPtr(Value *v) {
-  return v->getType()->isPointerTy() &&
-         v->getType()->getPointerElementType()->isStructTy();
+bool isStructPtrTy(Type *T) {
+  return T->isPointerTy() && T->getPointerElementType()->isStructTy();
 }
 
 /**
@@ -75,12 +74,12 @@ std::vector<Value *> ExpandStruct(Value *v, Function *F, int expend_level = 5) {
                         ConstantInt::get(Type::getInt32Ty(Ctx), i)};
     auto *gep = GetElementPtrInst::CreateInBounds(StructTy, v, indices, "",
                                                   &*entry.begin());
-    if (isStructPtr(gep)) {
-      std::vector<Value *> elems = ExpandStruct(gep, F, expend_level - 1);
+    Type *BaseTy = gep->getType()->getPointerElementType();
+    if (BaseTy->isPointerTy() && isStructPtrTy(BaseTy)) {
+      std::vector<Value *> elems =
+          ExpandStruct(gep->getPointerOperand(), F, expend_level - 1);
       Expanded.insert(Expanded.end(), elems.begin(), elems.end());
     } else {
-      // auto *val = new LoadInst(gep->getType(), gep, "", &entry);
-      // Expanded.push_back(val);
       Expanded.push_back(gep);
     }
   }
@@ -145,7 +144,7 @@ bool ReportPass::runOnFunction(Function &F) {
     std::vector<Value *> ParamArgs;
     llvm::raw_string_ostream rso(TypeStr);
     for (Value &Arg : F.args()) {
-      if (isStructPtr(&Arg)) {
+      if (isStructPtrTy(Arg.getType())) {
         std::vector<Value *> elems = ExpandStruct(&Arg, &F);
         ParamArgs.insert(ParamArgs.end(), elems.begin(), elems.end());
 
