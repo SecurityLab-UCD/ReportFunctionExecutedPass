@@ -1,7 +1,9 @@
 #include "llvm/ADT/Statistic.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/GetElementPtrTypeIterator.h"
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/Instruction.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
@@ -46,36 +48,43 @@ Constant *MakeGlobalString(Module *M, std::string str) {
   return ConstantExpr::getBitCast(v, Type::getInt8Ty(Ctx)->getPointerTo());
 }
 
+bool isStructPtr(Value *v) {
+  return v->getType()->isPointerTy() &&
+         v->getType()->getPointerElementType()->isStructTy();
+}
+
 /**
  * @brief Expand a struct value into a vector of its elements
  * @param v: struct value that can be casted to ConstantStruct
  * @param expend_level: max number of levels of struct to expand if nested
  * @return vector of values in the struct
  */
-std::vector<Value *> ExpandStruct(Value *v, int expend_level = 5) {
+std::vector<Value *> ExpandStruct(Value *v, Function *F, int expend_level = 5) {
   std::vector<Value *> Expanded;
   if (expend_level == 0) {
     return Expanded;
   }
 
-  int len = v->getType()->getStructNumElements();
-  auto *cs = dyn_cast<ConstantStruct>(v);
-  if (cs) {
-    for (unsigned i = 0; i < len; i++) {
-      Value *Elem = cs->getAggregateElement(i);
-      Type *ElemTy = cs->getType()->getStructElementType(i);
-
-      // if where is a struct inside a struct, recursively expand it
-      if (ElemTy->isStructTy()) {
-        std::vector<Value *> sub = ExpandStruct(Elem, expend_level - 1);
-        Expanded.insert(Expanded.end(), sub.begin(), sub.end());
-      } else {
-        Expanded.push_back(Elem);
-      }
+  LLVMContext &Ctx = F->getContext();
+  Type *StructTy = v->getType()->getPointerElementType();
+  auto &entry = F->getEntryBlock();
+  int len = StructTy->getStructNumElements();
+  for (int i = 0; i < len; i++) {
+    // recursively expanding, so the first index is always 0
+    Value *indices[] = {ConstantInt::get(Type::getInt32Ty(Ctx), 0),
+                        ConstantInt::get(Type::getInt32Ty(Ctx), i)};
+    auto *gep = GetElementPtrInst::CreateInBounds(StructTy, v, indices, "",
+                                                  &*entry.begin());
+    if (isStructPtr(gep)) {
+      std::vector<Value *> elems = ExpandStruct(gep, F, expend_level - 1);
+      Expanded.insert(Expanded.end(), elems.begin(), elems.end());
+    } else {
+      // auto *val = new LoadInst(gep->getType(), gep, "", &entry);
+      // Expanded.push_back(val);
+      Expanded.push_back(gep);
     }
-  } else {
-    errs() << "cannot expand non-constant struct\n";
   }
+
   return Expanded;
 }
 
@@ -136,8 +145,8 @@ bool ReportPass::runOnFunction(Function &F) {
     std::vector<Value *> ParamArgs;
     llvm::raw_string_ostream rso(TypeStr);
     for (Value &Arg : F.args()) {
-      if (Arg.getType()->isStructTy()) {
-        std::vector<Value *> elems = ExpandStruct(&Arg);
+      if (isStructPtr(&Arg)) {
+        std::vector<Value *> elems = ExpandStruct(&Arg, &F);
         ParamArgs.insert(ParamArgs.end(), elems.begin(), elems.end());
 
         // todo: get this type string from ExpandStruct
