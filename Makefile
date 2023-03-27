@@ -9,8 +9,8 @@ REPORT_FLAGS = -Xclang -load -Xclang ./report/libReportPass.so -flegacy-pass-man
 
 all: example
 
-reporter.o:
-	$(CXX) -g -c $(REPORTER_INC) reporter.cpp -o reporter.o
+reporter:
+	$(CXX) -g -shared -fPIC $(REPORTER_INC) reporter.cpp -o reporter.so
 
 pass:
 	$(CXX) -g -shared -fPIC $(LLVM_INC) $(LLVM_LIB) -o report/libReportPass.so report/Report.cpp -fno-rtti
@@ -18,8 +18,8 @@ pass:
 lib.o: lib.h pass
 	$(CC) $(REPORT_FLAGS) -g -c lib.c
 
-example: reporter.o lib.o pass
-	$(CXX) reporter.o $(REPORT_FLAGS) lib.o example.c -o example
+example: reporter lib.o pass
+	$(CC) ./reporter.so $(REPORT_FLAGS) lib.o example.c -o example
 
 clean:
 	rm *.o example *.ll out.json
