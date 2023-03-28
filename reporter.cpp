@@ -12,18 +12,18 @@
 using json = nlohmann::json;
 using namespace std;
 
-typedef struct Value {
+typedef struct JSONValue {
   string value;
   string type;
 
-  Value(string val, string ty) : value(val), type(ty){};
-} Value;
+  JSONValue(string val, string ty) : value(val), type(ty){};
+} JSONValue;
 
-void to_json(json &j, const Value &v) {
+void to_json(json &j, const JSONValue &v) {
   j = json{{"value", v.value}, {"type", v.type}};
 }
 
-typedef pair<vector<Value>, vector<Value>> IOPair;
+typedef pair<vector<JSONValue>, vector<JSONValue>> IOPair;
 
 void to_json(json &j, const IOPair &io) {
   j = json{{"inputs", io.first}, {"outputs", io.second}};
@@ -155,10 +155,10 @@ extern "C" int report_param(bool has_rnt, const char *param_meta, int len...) {
 
   // parse inputs
   string param;
-  vector<Value> inputs({});
-  vector<Value> outputs({});
+  vector<JSONValue> inputs({});
+  vector<JSONValue> outputs({});
   if (!has_rnt) {
-    outputs.push_back(Value("void", "void"));
+    outputs.push_back(JSONValue("void", "void"));
   }
 
   for (int i = 0; i < len + (int)has_rnt; i++) {
@@ -217,7 +217,7 @@ extern "C" int report_param(bool has_rnt, const char *param_meta, int len...) {
       param = "Unknown Type Value";
     }
 
-    Value v = Value(param, types[i]);
+    JSONValue v = JSONValue(param, types[i]);
     if (i == len) {
       outputs.push_back(v);
     } else if (is_val_ptr) {
