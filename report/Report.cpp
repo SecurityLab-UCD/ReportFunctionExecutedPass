@@ -59,6 +59,11 @@ bool isStructPtrTy(Type *T) {
  * @return vector of values in the struct
  */
 std::vector<Value *> ExpandStruct(Value *v, Function *F, int expend_level = 5) {
+  /**
+   * todo: consider the difference between
+   * struct S { int s }; struct T { float t };
+   * struct ST { struct s, struct t } v.s. struct ST { int s, float t }
+   */
   std::vector<Value *> Expanded;
   if (expend_level == 0) {
     return Expanded;
@@ -171,7 +176,15 @@ bool ReportPass::runOnFunction(Function &F) {
       if (ReturnInst *RI = dyn_cast<ReturnInst>(Term)) {
         if (RI->getNumOperands() == 1) {
           Value *ReturnValue = RI->getOperand(0);
-          ParamArgs.push_back(ReturnValue);
+          if (isStructPtrTy(ReturnValue->getType())) {
+            std::vector<Value *> elems = ExpandStruct(ReturnValue, &F);
+            ParamArgs.insert(ParamArgs.end(), elems.begin(), elems.end());
+
+            // todo: get this type string from ExpandStruct
+            rso << GetTyStr(elems, delimiter);
+          } else {
+            ParamArgs.push_back(ReturnValue);
+          }
           has_rnt = true;
         }
       } else if (SwitchInst *SI = dyn_cast<SwitchInst>(Term)) {
