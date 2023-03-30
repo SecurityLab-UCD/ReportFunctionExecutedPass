@@ -55,10 +55,13 @@ bool isStructPtrTy(Type *T) {
 /**
  * @brief Expand a struct value into a vector of its elements
  * @param v: struct value that can be casted to ConstantStruct
+ * @param F: function that the struct value is in
+ * @param I: instruction to insert the GetElementPtrInst before
  * @param expend_level: max number of levels of struct to expand if nested
  * @return vector of values in the struct
  */
-std::vector<Value *> ExpandStruct(Value *v, Function *F, int expend_level = 5) {
+std::vector<Value *> ExpandStruct(Value *v, Function *F, Instruction *I,
+                                  int expend_level = 5) {
   /**
    * todo: consider the difference between
    * struct S { int s }; struct T { float t };
@@ -70,19 +73,24 @@ std::vector<Value *> ExpandStruct(Value *v, Function *F, int expend_level = 5) {
   }
 
   LLVMContext &Ctx = F->getContext();
-  Type *StructTy = v->getType()->getPointerElementType();
+  StructType *StructTy =
+      dyn_cast<StructType>(v->getType()->getPointerElementType());
+  if (!StructTy) {
+    errs() << "Calling ExpandStruct on non-struct type\n";
+    return Expanded;
+  }
+
   auto &entry = F->getEntryBlock();
   int len = StructTy->getStructNumElements();
   for (int i = 0; i < len; i++) {
     // recursively expanding, so the first index is always 0
     Value *indices[] = {ConstantInt::get(Type::getInt32Ty(Ctx), 0),
                         ConstantInt::get(Type::getInt32Ty(Ctx), i)};
-    auto *gep = GetElementPtrInst::CreateInBounds(StructTy, v, indices, "",
-                                                  &*entry.begin());
+    auto *gep = GetElementPtrInst::CreateInBounds(StructTy, v, indices, "", I);
     Type *BaseTy = gep->getType()->getPointerElementType();
     if (BaseTy->isPointerTy() && isStructPtrTy(BaseTy)) {
       std::vector<Value *> elems =
-          ExpandStruct(gep->getPointerOperand(), F, expend_level - 1);
+          ExpandStruct(gep->getPointerOperand(), F, I, expend_level - 1);
       Expanded.insert(Expanded.end(), elems.begin(), elems.end());
     } else {
       Expanded.push_back(gep);
@@ -150,7 +158,7 @@ bool ReportPass::runOnFunction(Function &F) {
     llvm::raw_string_ostream rso(TypeStr);
     for (Value &Arg : F.args()) {
       if (isStructPtrTy(Arg.getType())) {
-        std::vector<Value *> elems = ExpandStruct(&Arg, &F);
+        std::vector<Value *> elems = ExpandStruct(&Arg, &F, &*entry.begin());
         ParamArgs.insert(ParamArgs.end(), elems.begin(), elems.end());
 
         // todo: get this type string from ExpandStruct
@@ -177,7 +185,7 @@ bool ReportPass::runOnFunction(Function &F) {
         if (RI->getNumOperands() == 1) {
           Value *ReturnValue = RI->getOperand(0);
           if (isStructPtrTy(ReturnValue->getType())) {
-            std::vector<Value *> elems = ExpandStruct(ReturnValue, &F);
+            std::vector<Value *> elems = ExpandStruct(ReturnValue, &F, Term);
             ParamArgs.insert(ParamArgs.end(), elems.begin(), elems.end());
 
             // todo: get this type string from ExpandStruct
