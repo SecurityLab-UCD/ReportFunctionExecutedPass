@@ -5,7 +5,7 @@ REPORTER_INC = -I$(shell pwd)/include
 LLVM_INC = -I$(HOME)/clang+llvm/include
 LLVM_LIB = -I$(HOME)/clang+llvm/lib
 
-REPORT_FLAGS = -Xclang -load -Xclang ./report/libReportPass.so -flegacy-pass-manager
+REPORT_FLAGS = -Xclang -load -Xclang ./libReportPass.so -flegacy-pass-manager
 
 all: example
 
