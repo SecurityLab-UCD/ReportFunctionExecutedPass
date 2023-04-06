@@ -44,9 +44,20 @@ void report(string func_name, IOPair io) {
   }
 }
 
+/**
+ * @brief Signal handler non-standard exit
+ * https://stackoverflow.com/questions/40311937/terminating-a-program-with-calling-atexit-functions-linux
+ */
+void signal_handler(__attribute__((unused)) const int signum) {
+  exit(EXIT_FAILURE);
+}
+
 extern "C" void dump_count() {
   json j = report_table;
   cerr << j << "\n";
+  // cout << "============\n"
+  //      << "Hello from dump_count\n"
+  //      << "============\n";
 }
 
 vector<string> parse_meta(string meta) {
@@ -201,9 +212,15 @@ extern "C" int report_param(bool has_rnt, const char *param_meta, int len...) {
 
       if (ptr_level == 1) {
         void *ptr = va_arg(args, void *);
+        if (!ptr) {
+          continue;
+        }
         param = to_string_ptr(ptr, base_type);
       } else {
         void **ptr = va_arg(args, void **);
+        if (!ptr) {
+          continue;
+        }
         param = to_string_ptr(ptr, base_type, ptr_level);
       }
 
