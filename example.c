@@ -51,6 +51,9 @@ void print_list(struct LinkedNode *head) {
   putchar('\n');
 }
 
+// todo fix this case
+static void test_exit(struct LinkedNode *head, int code) { exit(code); }
+
 int main() {
   // struct LargeStruct s = {1, 2, 3.0, 4.0, 5.0, 6.0};
   // double result = foo(s);
@@ -58,5 +61,7 @@ int main() {
 
   struct LinkedNode *head = create_list(3);
   print_list(head);
+
+  test_exit(head, 0);
   return 0;
 }

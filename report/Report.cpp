@@ -86,12 +86,14 @@ std::vector<Value *> ExpandStruct(Value *v, Function *F, Instruction *I,
     // recursively expanding, so the first index is always 0
     Value *indices[] = {ConstantInt::get(Type::getInt32Ty(Ctx), 0),
                         ConstantInt::get(Type::getInt32Ty(Ctx), i)};
-    auto *gep = GetElementPtrInst::CreateInBounds(StructTy, v, indices, "", I);
+    GetElementPtrInst *gep =
+        GetElementPtrInst::CreateInBounds(StructTy, v, indices, "", I);
+
     Type *BaseTy = gep->getType()->getPointerElementType();
     if (BaseTy->isPointerTy() && isStructPtrTy(BaseTy)) {
-      std::vector<Value *> elems =
-          ExpandStruct(gep->getPointerOperand(), F, I, expend_level - 1);
-      Expanded.insert(Expanded.end(), elems.begin(), elems.end());
+      // std::vector<Value *> elems =
+      //     ExpandStruct(gep->getPointerOperand(), F, I, expend_level - 1);
+      // Expanded.insert(Expanded.end(), elems.begin(), elems.end());
     } else {
       Expanded.push_back(gep);
     }
@@ -110,12 +112,23 @@ std::string GetTyStr(std::vector<Value *> &elems, std::string delimiter) {
   return TyStr;
 }
 
+std::vector<std::string> ffmpeg_skip{"abort_codec_experimental"};
+
 bool ReportPass::runOnFunction(Function &F) {
   std::string fname = F.getName().str();
   Module *M = F.getParent();
   BasicBlock &entry = F.getEntryBlock();
   LLVMContext &Ctx = F.getContext();
+  std::string file_name = F.getParent()->getSourceFileName();
+  std::string file_name_wo_ext =
+      file_name.substr(0, file_name.find_last_of('.'));
 
+  errs() << "ReportPass: " << file_name << " " << fname << "\n";
+  if (std::find(ffmpeg_skip.begin(), ffmpeg_skip.end(), fname) !=
+      ffmpeg_skip.end()) {
+    errs() << "Skip " << fname << "\n";
+    return false;
+  }
   if (fname == "main") {
     // dump report at main exit
 
@@ -132,7 +145,8 @@ bool ReportPass::runOnFunction(Function &F) {
         FunctionType::get(Type::getInt32Ty(Ctx), AtexitArgsTys, false);
     std::vector<Value *> AtexitArgs({dump});
     FunctionCallee DumpAtexit = M->getOrInsertFunction("atexit", AtexitFTy);
-    CallInst::Create(DumpAtexit, AtexitArgs, "atexit", &*entry.begin());
+    Instruction *AtexitInst =
+        CallInst::Create(DumpAtexit, AtexitArgs, "atexit", &*entry.begin());
 
   } else {
 
@@ -153,7 +167,7 @@ bool ReportPass::runOnFunction(Function &F) {
     // the middle tokens are parameter types
     // the last token is return type
     // func_name>>=param1_type>>=...>>=rnt_type>>=
-    std::string TypeStr = fname + delimiter;
+    std::string TypeStr = file_name_wo_ext + "_" + fname + delimiter;
     std::vector<Value *> ParamArgs;
     llvm::raw_string_ostream rso(TypeStr);
     for (Value &Arg : F.args()) {
@@ -174,18 +188,19 @@ bool ReportPass::runOnFunction(Function &F) {
 
     // find rnt value and terminating instruction
     // todo: expand return struct type
-    Instruction *Term = &*entry.begin();
+    Instruction *ReportInsertB4 = &*entry.begin();
     bool has_rnt = false;
     for (BasicBlock &BB : F) {
-      Term = BB.getTerminator();
+      Instruction *Term = BB.getTerminator();
 
       // match on different type of terminator
       // empty else-if branches are reserved for later changes
       if (ReturnInst *RI = dyn_cast<ReturnInst>(Term)) {
+        ReportInsertB4 = RI;
         if (RI->getNumOperands() == 1) {
           Value *ReturnValue = RI->getOperand(0);
           if (isStructPtrTy(ReturnValue->getType())) {
-            std::vector<Value *> elems = ExpandStruct(ReturnValue, &F, Term);
+            std::vector<Value *> elems = ExpandStruct(ReturnValue, &F, RI);
             ParamArgs.insert(ParamArgs.end(), elems.begin(), elems.end());
 
             // todo: get this type string from ExpandStruct
@@ -207,6 +222,7 @@ bool ReportPass::runOnFunction(Function &F) {
       } else if (UnreachableInst *UI = dyn_cast<UnreachableInst>(Term)) {
         errs() << F.getName() << " Found Unreachable Terminator:\n\t";
         UI->print(errs());
+        errs() << "\n";
       } else {
         errs() << "Unknown Terminator:\n\t";
         Term->print(errs());
@@ -224,7 +240,7 @@ bool ReportPass::runOnFunction(Function &F) {
     APInt HasRnt = APInt(1, has_rnt, false);
     ParamArgs.insert(ParamArgs.begin(), ConstantInt::get(Ctx, HasRnt));
 
-    CallInst::Create(ReportParam, ParamArgs, "report_param", Term);
+    CallInst::Create(ReportParam, ParamArgs, "report_param", ReportInsertB4);
   }
   return true;
 }
