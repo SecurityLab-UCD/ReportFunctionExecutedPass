@@ -90,10 +90,20 @@ std::vector<Value *> ExpandStruct(Value *v, Function *F, Instruction *I,
         GetElementPtrInst::CreateInBounds(StructTy, v, indices, "", I);
 
     Type *BaseTy = gep->getType()->getPointerElementType();
-    if (BaseTy->isPointerTy() && isStructPtrTy(BaseTy)) {
-      // std::vector<Value *> elems =
-      //     ExpandStruct(gep->getPointerOperand(), F, I, expend_level - 1);
-      // Expanded.insert(Expanded.end(), elems.begin(), elems.end());
+    if (BaseTy->isPointerTy()) {
+      /**
+       * https://github.com/SecurityLab-UCD/ReportFunctionExecutedPass/pull/4#discussion_r1149958372
+       * struct in a struct is **not** always a pointer
+       * therefore we need to check the type of gep's pointer operand
+       * if no, there might be a Exit Code 139 Segmentation fault for
+       * referencing null pointer
+       */
+      Value *po = gep->getPointerOperand();
+      Type *poTy = po->getType();
+      if (po && poTy->isPointerTy() && isStructPtrTy(poTy)) {
+        std::vector<Value *> elems = ExpandStruct(po, F, I, expend_level - 1);
+        Expanded.insert(Expanded.end(), elems.begin(), elems.end());
+      }
     } else {
       Expanded.push_back(gep);
     }
