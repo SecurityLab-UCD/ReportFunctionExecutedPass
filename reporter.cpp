@@ -52,12 +52,18 @@ void signal_handler(__attribute__((unused)) const int signum) {
   exit(EXIT_FAILURE);
 }
 
+// the fuzzer file will be linked to multiple targets
+// for each target, the table should be dumped once
+static unsigned int dump_counter = 0;
 extern "C" void dump_count() {
+  if (dump_counter > 0) {
+    return;
+  }
   json j = report_table;
-  cerr << j << "\n";
-  // cout << "============\n"
-  //      << "Hello from dump_count\n"
-  //      << "============\n";
+  // libFuzzer prints its msg to stderr
+  // so for fuzzers we use cout
+  cout << j << "\n";
+  dump_counter++;
 }
 
 vector<string> parse_meta(string meta) {
@@ -116,7 +122,9 @@ string to_string_ptr(void *ptr, string base_type) {
     return string("ptr[]");
   }
   string val;
-  if (is_int(base_type)) {
+  if (base_type == "void") {
+    return "ptr[]: void";
+  } else if (is_int(base_type)) {
     // * Integer Type
     int size = atoi(base_type.substr(1).c_str());
     if (size <= 32) {

@@ -61,7 +61,7 @@ bool isStructPtrTy(Type *T) {
  * @return vector of values in the struct
  */
 std::vector<Value *> ExpandStruct(Value *v, Function *F, Instruction *I,
-                                  int expend_level = 5) {
+                                  int expend_level = 1) {
   /**
    * todo: consider the difference between
    * struct S { int s }; struct T { float t };
@@ -124,6 +124,10 @@ std::string GetTyStr(std::vector<Value *> &elems, std::string delimiter) {
 
 std::vector<std::string> ffmpeg_skip{"abort_codec_experimental"};
 
+bool is_in(std::string str, std::vector<std::string> &vec) {
+  return std::find(vec.begin(), vec.end(), str) != vec.end();
+}
+
 bool ReportPass::runOnFunction(Function &F) {
   std::string fname = F.getName().str();
   Module *M = F.getParent();
@@ -139,7 +143,8 @@ bool ReportPass::runOnFunction(Function &F) {
     errs() << "Skip " << fname << "\n";
     return false;
   }
-  if (fname == "main") {
+  // insert atexit() at LLVMFuzzerTestOneInput function so fuzzers can dump
+  if (fname == "main" || fname == "LLVMFuzzerTestOneInput") {
     // dump report at main exit
 
     // find function pointer to dump_count
