@@ -4,6 +4,8 @@
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <regex>
+#include <setjmp.h>
+#include <signal.h>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -51,6 +53,12 @@ void report(string func_name, IOPair io) {
 void signal_handler(__attribute__((unused)) const int signum) {
   exit(EXIT_FAILURE);
 }
+
+/**
+ * @brief Signal handler for segfault
+ */
+static sigjmp_buf env;
+void segfault_handler(int signal_number) { siglongjmp(env, 1); }
 
 // the fuzzer file will be linked to multiple targets
 // for each target, the table should be dumped once
@@ -107,6 +115,9 @@ void *dereferenceNTimes(void **ptr, int n) {
   void *pp;
   for (int i = 0; i < n; i++) {
     pp = reinterpret_cast<void *>(*ptr);
+    if (!pp) {
+      return nullptr;
+    }
   }
   return pp;
 }
@@ -122,6 +133,7 @@ string to_string_ptr(void *ptr, string base_type) {
     return string("ptr[]");
   }
   string val;
+
   if (base_type == "void") {
     return "ptr[]: void";
   } else if (is_int(base_type)) {
@@ -165,7 +177,9 @@ string to_string_ptr(void **ptr, string base_type, int ptr_level) {
   return "ptr[" + to_string_ptr(deref_ptr, base_type) + "]";
 }
 
-extern "C" int report_param(bool has_rnt, const char *param_meta, int len...) {
+// current reporting IOPair
+IOPair current_reporting;
+extern "C" int report_param(bool is_rnt, const char *param_meta, int len...) {
   va_list args;
   va_start(args, len);
   vector<string> meta_vec = parse_meta(string(param_meta));
@@ -174,13 +188,15 @@ extern "C" int report_param(bool has_rnt, const char *param_meta, int len...) {
 
   // parse inputs
   string param;
-  vector<JSONValue> inputs({});
-  vector<JSONValue> outputs({});
-  if (!has_rnt) {
-    outputs.push_back(JSONValue("void", "void"));
-  }
+  vector<JSONValue> vs{};
 
-  for (int i = 0; i < len + (int)has_rnt; i++) {
+  struct sigaction sa;
+  sa.sa_handler = segfault_handler;
+  sigemptyset(&sa.sa_mask);
+  sa.sa_flags = 0;
+  sigaction(SIGSEGV, &sa, nullptr);
+
+  for (int i = 0; i < len; i++) {
 
     // NOTE: smaller types will be promoted to larger int/float/long/etc.
     bool is_val_ptr = false;
@@ -218,21 +234,19 @@ extern "C" int report_param(bool has_rnt, const char *param_meta, int len...) {
         }
       }
 
-      if (ptr_level == 1) {
-        void *ptr = va_arg(args, void *);
-        if (!ptr) {
-          continue;
+      // there are some cases that the reported pointer is invalid,
+      // this will prevent the fuzzer from crashing
+      if (sigsetjmp(env, 1) == 0) {
+        if (ptr_level == 1) {
+          void *ptr = va_arg(args, void *);
+          param = to_string_ptr(ptr, base_type);
+        } else {
+          void **ptr = va_arg(args, void **);
+          param = to_string_ptr(ptr, base_type, ptr_level);
         }
-        param = to_string_ptr(ptr, base_type);
       } else {
-        void **ptr = va_arg(args, void **);
-        if (!ptr) {
-          continue;
-        }
-        param = to_string_ptr(ptr, base_type, ptr_level);
+        param = "ptr[]: pointer already freed";
       }
-
-      is_val_ptr = true;
     } else if (is_struct(types[0])) {
       // * Struct Type
       // todo: decode as the type of  first element
@@ -243,19 +257,15 @@ extern "C" int report_param(bool has_rnt, const char *param_meta, int len...) {
     }
 
     JSONValue v = JSONValue(param, types[i]);
-    if (i == len) {
-      outputs.push_back(v);
-    } else if (is_val_ptr) {
-      // if input is a pointer to a value
-      // we consider it also as a output since it might be modified
-      outputs.push_back(v);
-      inputs.push_back(v);
-    } else {
-      inputs.push_back(v);
-    }
+    vs.push_back(v);
   }
   va_end(args);
 
-  report(func_name, {inputs, outputs});
+  if (is_rnt) {
+    current_reporting.second = vs;
+    report(func_name, current_reporting);
+  } else {
+    current_reporting.first = vs;
+  }
   return 0;
 }
