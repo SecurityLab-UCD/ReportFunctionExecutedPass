@@ -122,8 +122,6 @@ std::string GetTyStr(std::vector<Value *> &elems, std::string delimiter) {
   return TyStr;
 }
 
-std::vector<std::string> ffmpeg_skip{"abort_codec_experimental"};
-
 bool is_in(std::string str, std::vector<std::string> &vec) {
   return std::find(vec.begin(), vec.end(), str) != vec.end();
 }
@@ -241,11 +239,6 @@ bool ReportPass::runOnFunction(Function &F) {
       file_name.substr(0, file_name.find_last_of('.'));
 
   errs() << "ReportPass: " << file_name << " " << fname << "\n";
-  if (std::find(ffmpeg_skip.begin(), ffmpeg_skip.end(), fname) !=
-      ffmpeg_skip.end()) {
-    errs() << "Skip " << fname << "\n";
-    return false;
-  }
   // insert atexit() at LLVMFuzzerTestOneInput function so fuzzers can dump
   if (fname == "main" || fname == "LLVMFuzzerTestOneInput") {
     // dump report at main exit
