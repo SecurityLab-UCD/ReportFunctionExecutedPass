@@ -48,7 +48,9 @@ static unordered_map<string, vector<IOPair>> report_table;
 void report(string func_name, IOPair io) {
   if (report_table.find(func_name) == report_table.end()) {
     report_table.insert({func_name, {io}});
-  } else {
+  } else if (report_table[func_name].size() < 10) {
+    // only report the first 10 executions of the same function
+    // ToDo: decide a better upper limit
     report_table[func_name].push_back(io);
   }
 }
