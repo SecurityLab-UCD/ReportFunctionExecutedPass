@@ -7,10 +7,12 @@ LLVM_LIB = -I$(HOME)/clang+llvm/lib
 
 REPORT_FLAGS = -Xclang -load -Xclang ./libReportPass.so -flegacy-pass-manager
 
-all: example
+all: clean example
 
-reporter:
-	$(CXX) -g -shared -fPIC $(REPORTER_INC) reporter.cpp -o reporter.so
+reporter.o:
+	$(CXX) -g $(REPORTER_INC) -c reporter.cpp -o reporter.o
+libreporter.so:
+	$(CXX) -g -shared -fPIC $(REPORTER_INC) reporter.cpp -o libreporter.so
 
 pass:
 	$(CXX) -g -shared -fPIC $(LLVM_INC) $(LLVM_LIB) -o libReportPass.so report/Report.cpp -fno-rtti
@@ -18,10 +20,8 @@ pass:
 lib.o: lib.h pass
 	$(CC) $(REPORT_FLAGS) -g -c lib.c
 
-example: reporter lib.o pass
-	$(CC) -S -emit-llvm -Xclang -disable-O0-optnone example.c -o example.ll
-	opt -load ./libReportPass.so -report -enable-new-pm=0 -S example.ll > example2.ll
-	$(CC) lib.o ./reporter.so example2.ll -o example
+example: reporter.o lib.o pass
+	$(CC) -Xclang -disable-O0-optnone $(REPORT_FLAGS) example.c lib.o reporter.o -lstdc++ -o example
 
 clean:
-	rm *.o example *.ll out.json
+	rm -f *.o example *.ll out.json *.a *.so
