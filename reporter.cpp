@@ -14,6 +14,11 @@
 using json = nlohmann::json;
 using namespace std;
 
+static bool SILENT_REPORTER = false;
+__attribute__((constructor)) static void check_silence() {
+  SILENT_REPORTER = (std::getenv("SILENT_REPORTER") != nullptr);
+}
+
 typedef struct JSONValue {
   string value;
   string type;
@@ -64,12 +69,15 @@ void segfault_handler(int signal_number) { siglongjmp(env, 1); }
 // for each target, the table should be dumped once
 static unsigned int dump_counter = 0;
 extern "C" void dump_count() {
+  if (SILENT_REPORTER)
+    return;
   if (dump_counter > 0) {
     return;
   }
   json j = report_table;
   // libFuzzer prints its msg to stderr
   // so for fuzzers we use cout
+  // TODO: print to a file maybe
   cout << j << "\n";
   dump_counter++;
 }
@@ -80,6 +88,7 @@ vector<string> parse_meta(string meta) {
 
   size_t pos = 0;
   string token;
+  // TODO: substr is also expensive.
   while ((pos = meta.find(delimiter)) != string::npos) {
     token = meta.substr(0, pos);
     xs.push_back(token);
@@ -180,10 +189,14 @@ string to_string_ptr(void **ptr, string base_type, int ptr_level) {
 // current reporting IOPair
 IOPair current_reporting;
 extern "C" int report_param(bool is_rnt, const char *param_meta, int len...) {
+  if (SILENT_REPORTER)
+    return 0;
   va_list args;
   va_start(args, len);
   vector<string> meta_vec = parse_meta(string(param_meta));
   string func_name = meta_vec[0];
+  // TODO: Remove this copy constructor and manually calculate offset. Copying
+  // can be expensive.
   vector<string> types = vector<string>(meta_vec.begin() + 1, meta_vec.end());
 
   // parse inputs
