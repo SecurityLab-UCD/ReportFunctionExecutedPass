@@ -2,6 +2,8 @@
 #include <stdlib.h>
 
 #include <iostream>
+#include <memory>
+#include <mutex>
 #include <nlohmann/json.hpp>
 #include <regex>
 #include <setjmp.h>
@@ -187,7 +189,19 @@ string to_string_ptr(void **ptr, string base_type, int ptr_level) {
 }
 
 // current reporting IOPair
-IOPair current_reporting;
+static IOPair current_reporting;
+std::mutex mtx;
+void update_current_reporting(bool is_rnt, const vector<JSONValue> &vs,
+                              const string &func_name) {
+  std::unique_lock<std::mutex> lock(mtx);
+  if (is_rnt) {
+    current_reporting.second = vs;
+    report(func_name, current_reporting);
+  } else {
+    current_reporting.first = vs;
+  }
+}
+
 extern "C" int report_param(bool is_rnt, const char *param_meta, int len...) {
   if (SILENT_REPORTER)
     return 0;
@@ -200,7 +214,7 @@ extern "C" int report_param(bool is_rnt, const char *param_meta, int len...) {
   vector<string> types = vector<string>(meta_vec.begin() + 1, meta_vec.end());
 
   // parse inputs
-  string param;
+  string param = "";
   vector<JSONValue> vs{};
 
   struct sigaction sa;
@@ -249,6 +263,7 @@ extern "C" int report_param(bool is_rnt, const char *param_meta, int len...) {
 
       // there are some cases that the reported pointer is invalid,
       // this will prevent the fuzzer from crashing
+      // ! still not working in qemu even with sigsetjmp
       if (sigsetjmp(env, 1) == 0) {
         if (ptr_level == 1) {
           void *ptr = va_arg(args, void *);
@@ -274,11 +289,6 @@ extern "C" int report_param(bool is_rnt, const char *param_meta, int len...) {
   }
   va_end(args);
 
-  if (is_rnt) {
-    current_reporting.second = vs;
-    report(func_name, current_reporting);
-  } else {
-    current_reporting.first = vs;
-  }
+  update_current_reporting(is_rnt, vs, func_name);
   return 0;
 }
