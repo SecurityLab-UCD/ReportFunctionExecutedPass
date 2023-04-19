@@ -21,6 +21,11 @@ __attribute__((constructor)) static void check_silence() {
   SILENT_REPORTER = (std::getenv("SILENT_REPORTER") != nullptr);
 }
 
+static int MAX_REPORT_SIZE = 10;
+__attribute__((constructor)) static void check_max_report() {
+  MAX_REPORT_SIZE = (std::getenv("MAX_REPORT_SIZE") != nullptr);
+}
+
 typedef struct JSONValue {
   string value;
   string type;
@@ -38,7 +43,7 @@ void to_json(json &j, const IOPair &io) {
   j = json{{"inputs", io.first}, {"outputs", io.second}};
 }
 
-static unordered_map<string, vector<IOPair>> report_table;
+thread_local unordered_map<string, vector<IOPair>> report_table;
 
 /**
  * @brief Report the input and output of a function to report_table
@@ -48,7 +53,7 @@ static unordered_map<string, vector<IOPair>> report_table;
 void report(string func_name, IOPair io) {
   if (report_table.find(func_name) == report_table.end()) {
     report_table.insert({func_name, {io}});
-  } else if (report_table[func_name].size() < 10) {
+  } else if (report_table[func_name].size() < MAX_REPORT_SIZE) {
     // only report the first 10 executions of the same function
     // ToDo: decide a better upper limit
     report_table[func_name].push_back(io);
@@ -71,7 +76,7 @@ void segfault_handler(int signal_number) { siglongjmp(env, 1); }
 
 // the fuzzer file will be linked to multiple targets
 // for each target, the table should be dumped once
-static unsigned int dump_counter = 0;
+thread_local unsigned int dump_counter = 0;
 extern "C" void dump_count() {
   if (SILENT_REPORTER)
     return;
@@ -191,11 +196,9 @@ string to_string_ptr(void **ptr, string base_type, int ptr_level) {
 }
 
 // current reporting IOPair
-static IOPair current_reporting;
-std::mutex mtx;
+thread_local IOPair current_reporting;
 void update_current_reporting(bool is_rnt, const vector<JSONValue> &vs,
                               const string &func_name) {
-  std::unique_lock<std::mutex> lock(mtx);
   if (is_rnt) {
     current_reporting.second = vs;
     report(func_name, current_reporting);
