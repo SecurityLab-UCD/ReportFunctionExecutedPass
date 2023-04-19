@@ -3,7 +3,6 @@
 
 #include <iostream>
 #include <memory>
-#include <mutex>
 #include <nlohmann/json.hpp>
 #include <regex>
 #include <setjmp.h>
