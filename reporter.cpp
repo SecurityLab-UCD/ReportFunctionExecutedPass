@@ -22,7 +22,7 @@ __attribute__((constructor)) static void check_silence() {
 
 static int MAX_REPORT_SIZE = 10;
 __attribute__((constructor)) static void check_max_report() {
-  MAX_REPORT_SIZE = (std::getenv("MAX_REPORT_SIZE") != nullptr);
+  MAX_REPORT_SIZE = atoi(std::getenv("MAX_REPORT_SIZE"));
 }
 
 typedef struct JSONValue {
