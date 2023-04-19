@@ -42,7 +42,7 @@ void to_json(json &j, const IOPair &io) {
   j = json{{"inputs", io.first}, {"outputs", io.second}};
 }
 
-thread_local unordered_map<string, vector<IOPair>> report_table;
+static unordered_map<string, vector<IOPair>> report_table;
 
 /**
  * @brief Report the input and output of a function to report_table
