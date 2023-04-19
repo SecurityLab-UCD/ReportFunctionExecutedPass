@@ -9,8 +9,12 @@ REPORT_FLAGS = -Xclang -load -Xclang ./libReportPass.so -flegacy-pass-manager
 
 all: clean example
 
-reporter.o:
-	$(CXX) -g $(REPORTER_INC) -c reporter.cpp -o reporter.o
+reporter.stdc++.o: 
+	$(CXX) -g $(REPORTER_INC) -c reporter.cpp -o reporter.stdc++.o -stdlib=libstdc++
+
+reporter.c++.o:
+	$(CXX) -g $(REPORTER_INC) -c reporter.cpp -o reporter.c++.o -stdlib=libc++
+
 libreporter.so:
 	$(CXX) -g -shared -fPIC $(REPORTER_INC) reporter.cpp -o libreporter.so
 
@@ -20,8 +24,8 @@ pass:
 lib.o: lib.h pass
 	$(CC) $(REPORT_FLAGS) -g -c lib.c
 
-example: reporter.o lib.o pass
-	$(CC) -Xclang -disable-O0-optnone $(REPORT_FLAGS) example.c lib.o reporter.o -lstdc++ -o example
+example: reporter.stdc++.o reporter.c++.o lib.o pass libreporter.so
+	$(CC) -Xclang -disable-O0-optnone $(REPORT_FLAGS) example.c lib.o reporter.stdc++.o -lstdc++ -o example
 
 clean:
 	rm -f *.o example *.ll out.json *.a *.so
