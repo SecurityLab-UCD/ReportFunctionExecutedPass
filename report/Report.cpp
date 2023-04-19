@@ -8,6 +8,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
 #include "llvm/Pass.h"
+#include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 
@@ -203,12 +204,16 @@ void ReportOutputs(Function &F, FunctionCallee &ReportParam,
     } else if (CatchReturnInst *CRI = dyn_cast<CatchReturnInst>(Term)) {
     } else if (CleanupReturnInst *CuRI = dyn_cast<CleanupReturnInst>(Term)) {
     } else if (UnreachableInst *UI = dyn_cast<UnreachableInst>(Term)) {
-      errs() << F.getName() << " Found Unreachable Terminator:\n\t";
-      UI->print(errs());
-      errs() << "\n";
+      LLVM_DEBUG({
+        dbgs() << F.getName() << " Found Unreachable Terminator:\n\t";
+        UI->print(dbgs());
+        dbgs() << "\n";
+      });
     } else {
-      errs() << "Unknown Terminator:\n\t";
-      Term->print(errs());
+      LLVM_DEBUG({
+        dbgs() << "Unknown Terminator:\n\t";
+        Term->print(dbgs());
+      });
     }
   }
 
@@ -238,7 +243,7 @@ bool ReportPass::runOnFunction(Function &F) {
   std::string file_name_wo_ext =
       file_name.substr(0, file_name.find_last_of('.'));
 
-  errs() << "ReportPass: " << file_name << " " << fname << "\n";
+  LLVM_DEBUG(dbgs() << "ReportPass: " << file_name << " " << fname << "\n");
   // insert atexit() at LLVMFuzzerTestOneInput function so fuzzers can dump
   if (fname == "main" || fname == "LLVMFuzzerTestOneInput") {
     // dump report at main exit
