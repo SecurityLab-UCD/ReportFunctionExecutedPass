@@ -23,7 +23,7 @@ __attribute__((constructor)) static void check_silence() {
 static int MAX_REPORT_SIZE = 10;
 __attribute__((constructor)) static void check_max_report() {
   int buff = atoi(std::getenv("MAX_REPORT_SIZE"));
-  if (buff != 0) {
+  if (buff > 0) {
     MAX_REPORT_SIZE = buff;
   }
 }
