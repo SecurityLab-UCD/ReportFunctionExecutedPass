@@ -30,21 +30,15 @@ __attribute__((constructor)) static void check_max_report() {
   }
 }
 
-typedef struct JSONValue {
-  string value;
-  string type;
-
-  JSONValue(string val, string ty) : value(val), type(ty){};
-} JSONValue;
-
-void to_json(json &j, const JSONValue &v) {
-  j = json(v.value);
-}
-
-typedef pair<vector<JSONValue>, vector<JSONValue>> IOPair;
+typedef struct IOPair {
+  vector<string> first{};
+  vector<string> second{};
+} IOPair;
 
 void to_json(json &j, const IOPair &io) {
-  j = json{{"I", io.first}, {"O", io.second}};
+  // (io.first) and (io.first) are vectors of strings
+  // use () to avoid dump as {inputs: outputs} if there is only 1 input
+  j = json{{(io.first), (io.second)}};
 }
 
 static unordered_map<string, vector<IOPair>> report_table;
@@ -201,7 +195,7 @@ string to_string_ptr(void **ptr, string base_type, int ptr_level) {
 
 // current reporting IOPair
 thread_local IOPair current_reporting;
-void update_current_reporting(bool is_rnt, const vector<JSONValue> &vs,
+void update_current_reporting(bool is_rnt, const vector<string> &vs,
                               const string &func_name) {
   if (is_rnt) {
     current_reporting.second = vs;
@@ -224,7 +218,7 @@ extern "C" int report_param(bool is_rnt, const char *param_meta, int len...) {
 
   // parse inputs
   string param = "";
-  vector<JSONValue> vs{};
+  vector<string> vs{};
 
   struct sigaction sa;
   sa.sa_handler = segfault_handler;
@@ -293,8 +287,7 @@ extern "C" int report_param(bool is_rnt, const char *param_meta, int len...) {
       param = "Unknown Type Value";
     }
 
-    JSONValue v = JSONValue(param, types[i]);
-    vs.push_back(v);
+    vs.push_back(param);
   }
   va_end(args);
 
