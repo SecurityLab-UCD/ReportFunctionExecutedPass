@@ -44,7 +44,7 @@ void to_json(json &j, const JSONValue &v) {
 typedef pair<vector<JSONValue>, vector<JSONValue>> IOPair;
 
 void to_json(json &j, const IOPair &io) {
-  j = json{{"inputs", io.first}, {"outputs", io.second}};
+  j = json{{"I", io.first}, {"O", io.second}};
 }
 
 static unordered_map<string, vector<IOPair>> report_table;
