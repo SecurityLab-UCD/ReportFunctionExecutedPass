@@ -38,7 +38,7 @@ typedef struct JSONValue {
 } JSONValue;
 
 void to_json(json &j, const JSONValue &v) {
-  j = json{{"value", v.value}, {"type", v.type}};
+  j = json(v.value);
 }
 
 typedef pair<vector<JSONValue>, vector<JSONValue>> IOPair;
