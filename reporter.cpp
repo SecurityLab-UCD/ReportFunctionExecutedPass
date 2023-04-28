@@ -62,7 +62,7 @@ void report(string func_name, IOPair io) {
  * @brief Signal handler non-standard exit
  * https://stackoverflow.com/questions/40311937/terminating-a-program-with-calling-atexit-functions-linux
  */
-void signal_handler(__attribute__((unused)) const int signum) {
+extern "C" void signal_handler(__attribute__((unused)) const int signum) {
   exit(EXIT_FAILURE);
 }
 

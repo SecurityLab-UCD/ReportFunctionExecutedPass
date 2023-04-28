@@ -12,6 +12,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 
+#include <signal.h>
 #include <stdlib.h>
 #include <string>
 #include <tuple>
@@ -233,6 +234,37 @@ void ReportOutputs(Function &F, FunctionCallee &ReportParam,
   }
 }
 
+/**
+ * @brief Insert a signal handler before the given instruction
+ * @param F Function to insert signal handler into
+ * @param InsertBefore Instruction to insert signal handler before
+ * @param SignalNum Signal number to register handler for
+ */
+void InsertSignalBefore(Function *F, Instruction *InsertBefore, int SignalNum) {
+  LLVMContext &Ctx = F->getContext();
+  Module *M = F->getParent();
+
+  // find function pointer to signal handler
+  std::vector<Type *> SignalHandlerArgsTys({Type::getInt32Ty(Ctx)});
+  FunctionType *SignalHandlerFTy =
+      FunctionType::get(Type::getVoidTy(Ctx), SignalHandlerArgsTys, false);
+  M->getOrInsertFunction("signal_handler", SignalHandlerFTy);
+  Function *SignalHandler = M->getFunction("signal_handler");
+
+  // find function pointer to signal
+  std::vector<Type *> SignalArgsTys(
+      {Type::getInt32Ty(Ctx), SignalHandler->getType()});
+  FunctionType *SignalFTy =
+      FunctionType::get(Type::getVoidTy(Ctx), SignalArgsTys, false);
+  FunctionCallee Signal = M->getOrInsertFunction("signal", SignalFTy);
+  Value *SIGTERM_Value = ConstantInt::get(Type::getInt32Ty(Ctx), SignalNum);
+  std::vector<Value *> SignalArgs({SIGTERM_Value, SignalHandler});
+
+  // insert call to signal at entry of main
+  Instruction *SignalInst =
+      CallInst::Create(Signal, SignalArgs, "", InsertBefore);
+}
+
 bool ReportPass::runOnFunction(Function &F) {
   std::string fname = F.getName().str();
   Module *M = F.getParent();
@@ -263,6 +295,9 @@ bool ReportPass::runOnFunction(Function &F) {
     FunctionCallee DumpAtexit = M->getOrInsertFunction("atexit", AtexitFTy);
     Instruction *AtexitInst =
         CallInst::Create(DumpAtexit, AtexitArgs, "atexit", EntryInst);
+
+    InsertSignalBefore(&F, AtexitInst, SIGTERM);
+    InsertSignalBefore(&F, AtexitInst, SIGINT);
 
   } else {
 
