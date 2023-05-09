@@ -172,7 +172,9 @@ string to_string_ptr(void *ptr, string base_type) {
       val = to_string(*(long double *)ptr);
     }
   } else {
-    return "ptr[]: base type not supported";
+    // add type name to error message
+    // todo: support these common types
+    return "ptr[]: " + base_type;
   }
   return val;
 }
