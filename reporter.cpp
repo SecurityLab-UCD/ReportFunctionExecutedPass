@@ -11,9 +11,12 @@
 #include <unordered_map>
 #include <vector>
 
+#include "ExecHashMap.hpp"
+
 // for convenience
 using json = nlohmann::json;
 using namespace std;
+using namespace FuncReportor;
 
 static bool SILENT_REPORTER = false;
 __attribute__((constructor)) static void check_silence() {
@@ -30,33 +33,7 @@ __attribute__((constructor)) static void check_max_report() {
   }
 }
 
-typedef struct IOPair {
-  vector<string> first{};
-  vector<string> second{};
-} IOPair;
-
-void to_json(json &j, const IOPair &io) {
-  // (io.first) and (io.first) are vectors of strings
-  // use () to avoid dump as {inputs: outputs} if there is only 1 input
-  j = json{{(io.first), (io.second)}};
-}
-
-static unordered_map<string, vector<IOPair>> report_table;
-
-/**
- * @brief Report the input and output of a function to report_table
- * @param func_name: name of the function
- * @param io: input and output of the function
- */
-void report(string func_name, IOPair io) {
-  if (report_table.find(func_name) == report_table.end()) {
-    report_table.insert({func_name, {io}});
-  } else if (report_table[func_name].size() < MAX_REPORT_SIZE) {
-    // only report the first 10 executions of the same function
-    // ToDo: decide a better upper limit
-    report_table[func_name].push_back(io);
-  }
-}
+static ReportTable report_table;
 
 /**
  * @brief Signal handler non-standard exit
@@ -81,7 +58,8 @@ extern "C" void dump_count() {
   if (dump_counter > 0) {
     return;
   }
-  json j = report_table;
+  json j;
+  to_json(j, report_table);
   // libFuzzer prints its msg to stderr
   // so for fuzzers we use cout
   // TODO: print to a file maybe
@@ -201,7 +179,7 @@ void update_current_reporting(bool is_rnt, const vector<string> &vs,
                               const string &func_name) {
   if (is_rnt) {
     current_reporting.second = vs;
-    report(func_name, current_reporting);
+    report_table.report(func_name, current_reporting);
   } else {
     current_reporting.first = vs;
   }
