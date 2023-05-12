@@ -55,9 +55,13 @@ void print_list(struct LinkedNode *head) {
 static void test_exit(struct LinkedNode *head, int code) { exit(code); }
 
 int main() {
-  // struct LargeStruct s = {1, 2, 3.0, 4.0, 5.0, 6.0};
-  // double result = foo(s);
-  // printf("result = %f\n", result);
+  struct LargeStruct s = {1, 2, 3.0, 4.0, 5.0, 6.0};
+
+  // should produce a result of list of two list
+  // since input is the same
+  double result = foo(s);
+  double result2 = foo(s);
+  printf("result = %f\n", result);
 
   struct LinkedNode *head = create_list(3);
   print_list(head);
