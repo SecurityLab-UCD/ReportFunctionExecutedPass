@@ -58,8 +58,10 @@ typedef struct ExecHashMap {
 
 typedef struct ReportTable {
   std::unordered_map<std::string, ExecHashMap> table;
+  int value_capacity;
 
   ReportTable() {}
+  ReportTable(int cap) : value_capacity(cap) {}
 
   /**
    * @brief Report the input and output of a function to report_table
@@ -70,7 +72,7 @@ typedef struct ReportTable {
     if (table.find(func_name) == table.end()) {
       // only report the first 10 executions of the same function
       // ToDo: decide a better upper limit
-      auto exec_hash_map = ExecHashMap(10);
+      auto exec_hash_map = ExecHashMap(value_capacity);
       exec_hash_map.insert(io);
       table.insert({func_name, exec_hash_map});
     } else {
