@@ -32,7 +32,7 @@ __attribute__((constructor)) static void check_max_report() {
   }
 }
 
-static ReportTable report_table;
+static ReportTable report_table(MAX_REPORT_SIZE);
 
 /**
  * @brief Signal handler non-standard exit
