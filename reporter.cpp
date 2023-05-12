@@ -16,7 +16,6 @@
 // for convenience
 using json = nlohmann::json;
 using namespace std;
-using namespace FuncReportor;
 
 static bool SILENT_REPORTER = false;
 __attribute__((constructor)) static void check_silence() {

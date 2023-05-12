@@ -8,12 +8,9 @@
 
 #include <nlohmann/json.hpp>
 
-namespace FuncReportor {
-using namespace std;
-
 typedef struct IOPair {
-  vector<string> first;
-  vector<string> second;
+  std::vector<std::string> first;
+  std::vector<std::string> second;
 } IOPair;
 
 typedef struct ExecHashMap {
@@ -26,7 +23,9 @@ typedef struct ExecHashMap {
     }
   };
 
-  unordered_map<vector<string>, vector<vector<string>>, VectorHasher> map;
+  std::unordered_map<std::vector<std::string>,
+                     std::vector<std::vector<std::string>>, VectorHasher>
+      map;
   int value_capacity;
 
   ExecHashMap() : value_capacity(0) {}
@@ -41,21 +40,24 @@ typedef struct ExecHashMap {
     }
   }
 
-  vector<vector<string>> &operator[](vector<string> xs) { return map[xs]; }
+  std::vector<std::vector<std::string>> &
+  operator[](std::vector<std::string> xs) {
+    return map[xs];
+  }
 
   int size() { return map.size(); }
 
-  string to_json() const {
+  nlohmann::json to_json() const {
     nlohmann::json j;
     for (auto &kv : map) {
       j += nlohmann::json{{kv.first, kv.second}};
     }
-    return j.dump();
+    return j;
   }
 } ExecHashMap;
 
 typedef struct ReportTable {
-  unordered_map<string, ExecHashMap> table;
+  std::unordered_map<std::string, ExecHashMap> table;
 
   ReportTable() {}
 
@@ -64,7 +66,7 @@ typedef struct ReportTable {
    * @param func_name: name of the function
    * @param io: input and output of the function
    */
-  void report(string func_name, IOPair io) {
+  void report(std::string func_name, IOPair io) {
     if (table.find(func_name) == table.end()) {
       // only report the first 10 executions of the same function
       // ToDo: decide a better upper limit
@@ -76,21 +78,10 @@ typedef struct ReportTable {
     }
   }
 
-  string to_string() const {
-    return "A report table with " + std::to_string(table.size()) + " functions";
-  }
 } ReportTable;
-} // namespace FuncReportor
 
-void to_json(nlohmann::json &j, const FuncReportor::IOPair &io) {
-  // (io.first) and (io.first) are vectors of strings
-  // use () to avoid dump as {inputs: outputs} if there is only 1 input
-  j = nlohmann::json{{(io.first), (io.second)}};
-}
-
-void to_json(nlohmann::json &j, const FuncReportor::ReportTable &t) {
-  // todo: fix the way to dump the table
-  for (auto &kv : t.table) {
-    j += nlohmann::json{{kv.first, kv.second.to_json()}};
+void to_json(nlohmann::json &j, const ReportTable &t) {
+  for (const auto &kv : t.table) {
+    j[kv.first] = kv.second.to_json();
   }
 }
