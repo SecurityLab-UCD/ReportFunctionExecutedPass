@@ -11,7 +11,8 @@
 typedef std::vector<std::string> IOVector;
 typedef std::pair<IOVector, IOVector> IOPair;
 
-typedef struct ExecHashMap {
+class ExecHashMap {
+private:
   struct VectorHasher {
     int operator()(const std::vector<std::string> &V) const {
       std::string all = std::accumulate(
@@ -24,6 +25,7 @@ typedef struct ExecHashMap {
   std::unordered_map<IOVector, std::vector<IOVector>, VectorHasher> map;
   int value_capacity;
 
+public:
   ExecHashMap() : ExecHashMap(0) {}
   ExecHashMap(int cap) : value_capacity(cap) {}
 
@@ -46,12 +48,14 @@ typedef struct ExecHashMap {
     }
     return j;
   }
-} ExecHashMap;
+};
 
-typedef struct ReportTable {
+class ReportTable {
+private:
   std::unordered_map<std::string, ExecHashMap> table;
   int value_capacity;
 
+public:
   ReportTable() {}
   ReportTable(int cap) : value_capacity(cap) {}
 
@@ -72,10 +76,11 @@ typedef struct ReportTable {
     }
   }
 
-} ReportTable;
-
-void to_json(nlohmann::json &j, const ReportTable &t) {
-  for (const auto &kv : t.table) {
-    j[kv.first] = kv.second.to_json();
+  nlohmann::json to_json() const {
+    nlohmann::json j;
+    for (auto &kv : table) {
+      j += nlohmann::json{{kv.first, kv.second.to_json()}};
+    }
+    return j;
   }
-}
+};
