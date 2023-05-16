@@ -1,3 +1,6 @@
+#ifndef EXEC_HASH_MAP_HPP
+#define EXEC_HASH_MAP_HPP
+
 #include <iostream>
 #include <iterator>
 #include <numeric>
@@ -112,3 +115,5 @@ public:
     return j;
   }
 };
+
+#endif  // EXEC_HASH_MAP
