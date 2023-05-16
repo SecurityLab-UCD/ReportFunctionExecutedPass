@@ -57,8 +57,7 @@ extern "C" void dump_count() {
   if (dump_counter > 0) {
     return;
   }
-  json j;
-  to_json(j, report_table);
+  json j = report_table.to_json();
   // libFuzzer prints its msg to stderr
   // so for fuzzers we use cout
   // TODO: print to a file maybe
