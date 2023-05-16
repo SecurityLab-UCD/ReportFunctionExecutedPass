@@ -51,9 +51,9 @@ public:
    * @brief Insert a pair of inputs and outputs to the hash map
    * @param io: a pair of inputs (vector) and outputs (vector)
    */
-  void insert(const IOPair &io) {
-    IOVector inputs = io.first;
-    IOVector outputs = io.second;
+  void insert(IOPair &io) {
+    IOVector &inputs = io.first;
+    IOVector &outputs = io.second;
     if (map[inputs].size() < value_capacity)
     {
       map[inputs].push_back(outputs);
