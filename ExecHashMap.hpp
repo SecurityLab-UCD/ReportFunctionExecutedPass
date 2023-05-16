@@ -19,11 +19,15 @@ typedef std::pair<IOVector, IOVector> IOPair;
 class ExecHashMap {
 private:
   struct VectorHasher {
-    int operator()(const std::vector<std::string> &V) const {
-      std::string all = std::accumulate(
-          V.begin(), V.end(), std::string(),
-          [&](std::string x, std::string y) { return x + "," + y; });
-      return std::hash<std::string>{}(all);
+    // https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector
+    // XOR of each string's hash value
+    std::size_t operator()(const std::vector<std::string> &V) const {
+      std::hash<std::string> hasher;
+      std::size_t seed = 0;
+      for (const auto &str : V) {
+        seed ^= hasher(str) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+      }
+      return seed;
     }
   };
 
