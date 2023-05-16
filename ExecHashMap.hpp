@@ -24,11 +24,10 @@ private:
   struct VectorHasher {
     // https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector
     // XOR of each string's hash value
-    size_t operator()(const std::vector<std::string> &V) const {
+    size_t operator()(const IOVector &V) const {
       std::hash<std::string> hasher;
-      std::size_t seed = 0;
-      for (const auto &str : V)
-      {
+      size_t seed = 0;
+      for (const auto &str : V) {
         seed ^= hasher(str) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
       }
       return seed;
@@ -54,8 +53,7 @@ public:
   void insert(IOPair &io) {
     IOVector &inputs = io.first;
     IOVector &outputs = io.second;
-    if (map[inputs].size() < value_capacity)
-    {
+    if (map[inputs].size() < value_capacity) {
       map[inputs].push_back(outputs);
     }
   }
@@ -71,8 +69,7 @@ public:
 
   nlohmann::json to_json() const {
     nlohmann::json j;
-    for (auto &kv : map)
-    {
+    for (auto &kv : map) {
       j += nlohmann::json{{kv.first, kv.second}};
     }
     return j;
@@ -81,8 +78,15 @@ public:
 
 class ReportTable {
 private:
+
+  // <function_name, its_executions>
   std::unordered_map<std::string, ExecHashMap> table;
-  int value_capacity;
+
+  // for a function, only report first max_report_size executions
+  int max_report_size;
+
+  // allow at most max_outputs_for_input outputs for a given input
+  int max_outputs_for_input = 5;
 
 public:
   ReportTable() {}
@@ -91,7 +95,7 @@ public:
    * @brief Construct a new Report Table object
    * @param cap the capacity of the value vector and report table
    */
-  ReportTable(int cap) : value_capacity(cap) {}
+  ReportTable(int cap) : max_report_size(cap) {}
 
   /**
    * @brief Report the input and output of a function to report_table
@@ -99,28 +103,28 @@ public:
    * @param io: a pair inputs and outputs of the function
    */
   void report(const std::string &func_name, IOPair &io) {
-    if (table.find(func_name) == table.end())
-    {
+    if (table.find(func_name) == table.end()) {
       // only report the first 10 executions of the same function
       // ToDo: decide a better upper limit
-      auto exec_hash_map = ExecHashMap(value_capacity);
+      auto exec_hash_map = ExecHashMap(max_outputs_for_input);
       exec_hash_map.insert(io);
-      table.insert({ func_name, exec_hash_map });
-    }
-    else
-    {
+      table.insert({func_name, exec_hash_map});
+    } else {
+      // cap the size of reporting same function
+      if (table[func_name].size() >= max_report_size) {
+        return;
+      }
       table[func_name].insert(io);
     }
   }
 
   nlohmann::json to_json() const {
     nlohmann::json j;
-    for (auto &kv : table)
-    {
+    for (auto &kv : table) {
       j += nlohmann::json{{kv.first, kv.second.to_json()}};
     }
     return j;
   }
 };
 
-#endif  // EXEC_HASH_MAP
+#endif // EXEC_HASH_MAP
