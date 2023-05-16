@@ -272,8 +272,6 @@ bool ReportPass::runOnFunction(Function &F) {
   Instruction *EntryInst = &*entry.begin();
   LLVMContext &Ctx = F.getContext();
   std::string file_name = F.getParent()->getSourceFileName();
-  std::string file_name_wo_ext =
-      file_name.substr(0, file_name.find_last_of('.'));
 
   LLVM_DEBUG(dbgs() << "ReportPass: " << file_name << " " << fname << "\n");
   // insert atexit() at LLVMFuzzerTestOneInput function so fuzzers can dump
@@ -321,7 +319,7 @@ bool ReportPass::runOnFunction(Function &F) {
 
     char file_func_separater = '?';
     std::string TypeStrStarter =
-        file_name_wo_ext + file_func_separater + fname + delimiter;
+        file_name + file_func_separater + fname + delimiter;
 
     // insert call to report at entry with input parameters
     std::string InputsTyStr = TypeStrStarter;
