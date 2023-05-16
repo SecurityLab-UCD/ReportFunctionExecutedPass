@@ -8,10 +8,8 @@
 
 #include <nlohmann/json.hpp>
 
-typedef struct IOPair {
-  std::vector<std::string> first;
-  std::vector<std::string> second;
-} IOPair;
+typedef std::vector<std::string> IOVector;
+typedef std::pair<IOVector, IOVector> IOPair;
 
 typedef struct ExecHashMap {
   struct VectorHasher {
@@ -23,27 +21,21 @@ typedef struct ExecHashMap {
     }
   };
 
-  std::unordered_map<std::vector<std::string>,
-                     std::vector<std::vector<std::string>>, VectorHasher>
-      map;
+  std::unordered_map<IOVector, std::vector<IOVector>, VectorHasher> map;
   int value_capacity;
 
-  ExecHashMap() : value_capacity(0) {}
+  ExecHashMap() : ExecHashMap(0) {}
   ExecHashMap(int cap) : value_capacity(cap) {}
 
-  void insert(IOPair p) {
-    auto inputs = p.first;
-    auto outputs = p.second;
-
+  void insert(const IOPair &io) {
+    IOVector inputs = io.first;
+    IOVector outputs = io.second;
     if (map[inputs].size() < value_capacity) {
       map[inputs].push_back(outputs);
     }
   }
 
-  std::vector<std::vector<std::string>> &
-  operator[](std::vector<std::string> xs) {
-    return map[xs];
-  }
+  std::vector<IOVector> &operator[](const IOVector &xs) { return map[xs]; }
 
   int size() { return map.size(); }
 
@@ -68,7 +60,7 @@ typedef struct ReportTable {
    * @param func_name: name of the function
    * @param io: input and output of the function
    */
-  void report(std::string func_name, IOPair io) {
+  void report(const std::string &func_name, IOPair &io) {
     if (table.find(func_name) == table.end()) {
       // only report the first 10 executions of the same function
       // ToDo: decide a better upper limit
