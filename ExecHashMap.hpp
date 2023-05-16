@@ -24,10 +24,11 @@ private:
   struct VectorHasher {
     // https://stackoverflow.com/questions/20511347/a-good-hash-function-for-a-vector
     // XOR of each string's hash value
-    std::size_t operator()(const std::vector<std::string> &V) const {
+    size_t operator()(const std::vector<std::string> &V) const {
       std::hash<std::string> hasher;
       std::size_t seed = 0;
-      for (const auto &str : V) {
+      for (const auto &str : V)
+      {
         seed ^= hasher(str) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
       }
       return seed;
@@ -53,7 +54,8 @@ public:
   void insert(const IOPair &io) {
     IOVector inputs = io.first;
     IOVector outputs = io.second;
-    if (map[inputs].size() < value_capacity) {
+    if (map[inputs].size() < value_capacity)
+    {
       map[inputs].push_back(outputs);
     }
   }
@@ -69,7 +71,8 @@ public:
 
   nlohmann::json to_json() const {
     nlohmann::json j;
-    for (auto &kv : map) {
+    for (auto &kv : map)
+    {
       j += nlohmann::json{{kv.first, kv.second}};
     }
     return j;
@@ -96,20 +99,24 @@ public:
    * @param io: a pair inputs and outputs of the function
    */
   void report(const std::string &func_name, IOPair &io) {
-    if (table.find(func_name) == table.end()) {
+    if (table.find(func_name) == table.end())
+    {
       // only report the first 10 executions of the same function
       // ToDo: decide a better upper limit
       auto exec_hash_map = ExecHashMap(value_capacity);
       exec_hash_map.insert(io);
-      table.insert({func_name, exec_hash_map});
-    } else {
+      table.insert({ func_name, exec_hash_map });
+    }
+    else
+    {
       table[func_name].insert(io);
     }
   }
 
   nlohmann::json to_json() const {
     nlohmann::json j;
-    for (auto &kv : table) {
+    for (auto &kv : table)
+    {
       j += nlohmann::json{{kv.first, kv.second.to_json()}};
     }
     return j;
