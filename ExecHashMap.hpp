@@ -11,6 +11,11 @@
 typedef std::vector<std::string> IOVector;
 typedef std::pair<IOVector, IOVector> IOPair;
 
+/**
+ * @brief A hash map that maps inputs to a vector of outputs
+ * @details Key is inputs (a vector), value is a vector of outputs
+ * (a vector of vectors) of multiple executions
+ */
 class ExecHashMap {
 private:
   struct VectorHasher {
@@ -27,8 +32,17 @@ private:
 
 public:
   ExecHashMap() : ExecHashMap(0) {}
+
+  /**
+   * @brief Construct a new Exec Hash Map object
+   * @param cap the capacity of the value vector (maxmium length)
+   */
   ExecHashMap(int cap) : value_capacity(cap) {}
 
+  /**
+   * @brief Insert a pair of inputs and outputs to the hash map
+   * @param io: a pair of inputs (vector) and outputs (vector)
+   */
   void insert(const IOPair &io) {
     IOVector inputs = io.first;
     IOVector outputs = io.second;
@@ -37,6 +51,11 @@ public:
     }
   }
 
+  /**
+   * @brief Get the outputs of a given input
+   * @param xs: inputs
+   * @return a vector of outputs
+   */
   std::vector<IOVector> &operator[](const IOVector &xs) { return map[xs]; }
 
   int size() { return map.size(); }
@@ -57,12 +76,17 @@ private:
 
 public:
   ReportTable() {}
+
+  /**
+   * @brief Construct a new Report Table object
+   * @param cap the capacity of the value vector and report table
+   */
   ReportTable(int cap) : value_capacity(cap) {}
 
   /**
    * @brief Report the input and output of a function to report_table
    * @param func_name: name of the function
-   * @param io: input and output of the function
+   * @param io: a pair inputs and outputs of the function
    */
   void report(const std::string &func_name, IOPair &io) {
     if (table.find(func_name) == table.end()) {
