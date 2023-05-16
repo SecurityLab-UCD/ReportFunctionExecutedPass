@@ -318,7 +318,10 @@ bool ReportPass::runOnFunction(Function &F) {
     // the middle tokens are parameter types
     // the last token is return type
     // func_name>>=param1_type>>=...>>=rnt_type>>=
-    std::string TypeStrStarter = file_name_wo_ext + "_" + fname + delimiter;
+
+    char file_func_separater = '?';
+    std::string TypeStrStarter =
+        file_name_wo_ext + file_func_separater + fname + delimiter;
 
     // insert call to report at entry with input parameters
     std::string InputsTyStr = TypeStrStarter;
