@@ -51,7 +51,7 @@ void segfault_handler(int signal_number) { siglongjmp(env, 1); }
 // the fuzzer file will be linked to multiple targets
 // for each target, the table should be dumped once
 thread_local unsigned int dump_counter = 0;
-thread_local char *dump_file_name = nullptr;
+char *dump_file_name = "tmp_dump.json";
 extern "C" void dump_count() {
   if (SILENT_REPORTER)
     return;
@@ -65,6 +65,8 @@ extern "C" void dump_count() {
     printf("Error opening file!\n");
     exit(1);
   }
+
+  cout << "Dumping ReportTable to " << dump_file_name << "\n";
   fprintf(fp, "%s", j.dump().c_str());
   fclose(fp);
   dump_counter++;
