@@ -304,7 +304,7 @@ bool ReportPass::runOnFunction(Function &F) {
     FunctionCallee SetDumpFname =
         M->getOrInsertFunction("set_dump_fname", SetDumpFnameFTy);
     std::vector<Value *> SetDumpFnameArgs(
-        {MakeGlobalString(M, file_name_wo_ext + ".json")});
+        {MakeGlobalString(M, file_name + ".json")});
     CallInst::Create(SetDumpFname, SetDumpFnameArgs, "set_dump_fname",
                      AtexitInst);
 
