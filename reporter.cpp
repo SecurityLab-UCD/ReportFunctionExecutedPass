@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <fstream>
 #include <iostream>
 #include <memory>
 #include <nlohmann/json.hpp>
@@ -51,6 +52,7 @@ void segfault_handler(int signal_number) { siglongjmp(env, 1); }
 // the fuzzer file will be linked to multiple targets
 // for each target, the table should be dumped once
 thread_local unsigned int dump_counter = 0;
+thread_local char *dump_file_name = nullptr;
 extern "C" void dump_count() {
   if (SILENT_REPORTER)
     return;
@@ -58,11 +60,19 @@ extern "C" void dump_count() {
     return;
   }
   json j = report_table.to_json();
-  // libFuzzer prints its msg to stderr
-  // so for fuzzers we use cout
-  // TODO: print to a file maybe
-  cout << j << "\n";
+  // write j to file set in `dump_fname_name`
+  FILE *fp = fopen(dump_file_name, "w");
+  if (!fp) {
+    printf("Error opening file!\n");
+    exit(1);
+  }
+  fprintf(fp, "%s", j.dump().c_str());
+  fclose(fp);
   dump_counter++;
+}
+
+extern "C" void set_dump_fname(const char *file_name) {
+  dump_file_name = (char *)file_name;
 }
 
 vector<string> parse_meta(string meta) {
