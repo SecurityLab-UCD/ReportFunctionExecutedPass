@@ -315,19 +315,6 @@ bool ReportPass::runOnFunction(Function &F) {
     InsertSignalBefore(&F, AtexitInst, SIGTERM);
     InsertSignalBefore(&F, AtexitInst, SIGINT);
 
-    // call to set the global dump file name before Atexit Inst
-    std::vector<Type *> SetDumpFnameArgsTys({Type::getInt8PtrTy(Ctx)});
-    FunctionType *SetDumpFnameFTy =
-        FunctionType::get(Type::getVoidTy(Ctx), SetDumpFnameArgsTys, false);
-    FunctionCallee SetDumpFname =
-        M->getOrInsertFunction("set_dump_fname", SetDumpFnameFTy);
-
-    std::string filename_wo_path = get_filename_from_path(file_name);
-    std::vector<Value *> SetDumpFnameArgs(
-        {MakeGlobalString(M, filename_wo_path + ".json")});
-    CallInst::Create(SetDumpFname, SetDumpFnameArgs, "set_dump_fname",
-                     AtexitInst);
-
   } else {
 
     // report param
