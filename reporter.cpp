@@ -51,7 +51,17 @@ void segfault_handler(int signal_number) { siglongjmp(env, 1); }
 // the fuzzer file will be linked to multiple targets
 // for each target, the table should be dumped once
 thread_local unsigned int dump_counter = 0;
-char *dump_file_name = "tmp_dump.json";
+
+class DumpFileNameSetter {
+public:
+  char *filename;
+  DumpFileNameSetter() {
+    char *fname = std::getenv("DUMP_FILE_NAME");
+    filename = fname ? fname : (char *)"temp_report.json";
+  }
+};
+static DumpFileNameSetter dump_file_name_setter;
+
 extern "C" void dump_count() {
   if (SILENT_REPORTER)
     return;
@@ -60,20 +70,17 @@ extern "C" void dump_count() {
   }
   json j = report_table.to_json();
   // write j to file set in `dump_fname_name`
-  FILE *fp = fopen(dump_file_name, "w");
+  char *filename = dump_file_name_setter.filename;
+  FILE *fp = fopen(filename, "w");
   if (!fp) {
     printf("Error opening file!\n");
     exit(1);
   }
 
-  cout << "Dumping ReportTable to " << dump_file_name << "\n";
+  cout << "Dumping ReportTable to " << filename << "\n";
   fprintf(fp, "%s", j.dump().c_str());
   fclose(fp);
   dump_counter++;
-}
-
-extern "C" void set_dump_fname(const char *file_name) {
-  dump_file_name = (char *)file_name;
 }
 
 vector<string> parse_meta(string meta) {
