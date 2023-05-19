@@ -128,24 +128,6 @@ bool is_in(std::string str, std::vector<std::string> &vec) {
   return std::find(vec.begin(), vec.end(), str) != vec.end();
 }
 
-/**
- * @brief Get the filename from a path
- * @param path: path to get filename from, like /src/proj/filename.cc
- * @return filename like filename.cc is path is correct, otherwise path
- */
-std::string get_filename_from_path(const std::string &path) {
-  char sep = '/';
-
-  // Find the last occurrence of the path separator
-  size_t i = path.rfind(sep, path.length());
-  if (i != std::string::npos) {
-    // Return the substring after the last path separator
-    return (path.substr(i + 1, path.length() - i));
-  }
-
-  return path;
-}
-
 std::vector<Value *> ReportInputs(Function &F, FunctionCallee &ReportParam,
                                   raw_string_ostream &rso,
                                   std::string delimiter) {
