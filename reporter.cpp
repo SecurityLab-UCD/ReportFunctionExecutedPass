@@ -22,6 +22,7 @@ __attribute__((constructor)) static void check_silence() {
   SILENT_REPORTER = (std::getenv("SILENT_REPORTER") != nullptr);
 }
 
+/// @brief The maximum number of output vectors for same input vector
 static int MAX_REPORT_SIZE = 10;
 __attribute__((constructor)) static void check_max_report() {
   if (const char *env_p = std::getenv("MAX_REPORT_SIZE")) {
