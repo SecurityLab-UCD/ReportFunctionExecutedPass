@@ -70,7 +70,9 @@ public:
   nlohmann::json to_json() const {
     nlohmann::json j;
     for (auto &kv : map) {
-      j += nlohmann::json{{kv.first, kv.second}};
+      const IOVector &input = kv.first;
+      const std::vector<IOVector> &outputs = kv.second;
+      j += nlohmann::json{kv.first, kv.second};
     }
     return j;
   }
@@ -78,7 +80,6 @@ public:
 
 class ReportTable {
 private:
-
   // <function_name, its_executions>
   std::unordered_map<std::string, ExecHashMap> table;
 
@@ -121,7 +122,9 @@ public:
   nlohmann::json to_json() const {
     nlohmann::json j;
     for (auto &kv : table) {
-      j += nlohmann::json{{kv.first, kv.second.to_json()}};
+      const std::string &file_and_func_name = kv.first;
+      const ExecHashMap &exec_hash_map = kv.second;
+      j += nlohmann::json{{file_and_func_name, exec_hash_map.to_json()}};
     }
     return j;
   }
