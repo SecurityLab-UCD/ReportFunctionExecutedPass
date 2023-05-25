@@ -76,7 +76,7 @@ public:
     for (auto &kv : map) {
       const IOVector &input = kv.first;
       const std::vector<IOVector> &outputs = kv.second;
-      j += nlohmann::json{kv.first, kv.second};
+      j += nlohmann::json{input, outputs};
     }
     return j;
   }
