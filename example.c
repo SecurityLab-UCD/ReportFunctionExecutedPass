@@ -63,6 +63,10 @@ int main() {
   double result2 = foo(s);
   printf("result = %f\n", result);
 
+  struct LargeStruct s1 = {12, 13, 17.2, 11.2, 15.2, 16.2};
+  double result3 = foo(s1);
+  printf("result3 = %f\n", result3);
+
   struct LinkedNode *head = create_list(3);
   print_list(head);
 
