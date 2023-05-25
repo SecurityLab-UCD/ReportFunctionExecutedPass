@@ -31,4 +31,4 @@ debug: reporter.stdc++.o lib.o pass
 	$(CC) -Xclang -disable-O0-optnone $(REPORT_FLAGS) example.c lib.o reporter.stdc++.o -lstdc++ -o example
 
 clean:
-	rm -f *.o example *.ll out.json *.a *.so
+	rm -f *.o example *.ll *.json *.a *.so
