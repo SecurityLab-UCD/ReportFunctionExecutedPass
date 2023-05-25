@@ -56,7 +56,7 @@ public:
 
     // for the same input vector, we cap the number of outputs to value_capacity
     // `value_capacity` should be set so
-    // the model can know if the function is "honst" or not
+    // the model can know if the function is "honest" or not
     if (map[inputs].size() < value_capacity) {
       map[inputs].push_back(outputs);
     }
