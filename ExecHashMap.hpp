@@ -53,6 +53,10 @@ public:
   void insert(IOPair &io) {
     IOVector &inputs = io.first;
     IOVector &outputs = io.second;
+
+    // for the same input vector, we cap the number of outputs to value_capacity
+    // `value_capacity` should be set so
+    // the model can know if the function is "honst" or not
     if (map[inputs].size() < value_capacity) {
       map[inputs].push_back(outputs);
     }
@@ -83,20 +87,17 @@ private:
   // <function_name, its_executions>
   std::unordered_map<std::string, ExecHashMap> table;
 
-  // for a function, only report first max_report_size executions
-  int max_report_size;
-
   // allow at most max_outputs_for_input outputs for a given input
-  int max_outputs_for_input = 5;
+  int max_outputs_for_input;
 
 public:
-  ReportTable() {}
+  ReportTable() : max_outputs_for_input(5) {}
 
   /**
    * @brief Construct a new Report Table object
    * @param cap the capacity of the value vector and report table
    */
-  ReportTable(int cap) : max_report_size(cap) {}
+  ReportTable(int cap) : max_outputs_for_input(cap) {}
 
   /**
    * @brief Report the input and output of a function to report_table
@@ -111,10 +112,6 @@ public:
       exec_hash_map.insert(io);
       table.insert({func_name, exec_hash_map});
     } else {
-      // cap the size of reporting same function
-      if (table[func_name].size() >= max_report_size) {
-        return;
-      }
       table[func_name].insert(io);
     }
   }
