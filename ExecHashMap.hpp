@@ -6,6 +6,7 @@
 #include <numeric>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -34,7 +35,8 @@ private:
     }
   };
 
-  std::unordered_map<IOVector, std::vector<IOVector>, VectorHasher> map;
+  typedef std::unordered_set<IOVector, VectorHasher> IOVectorSet;
+  std::unordered_map<IOVector, IOVectorSet, VectorHasher> map;
   int value_capacity;
 
 public:
@@ -58,7 +60,7 @@ public:
     // `value_capacity` should be set so
     // the model can know if the function is "honest" or not
     if (map[inputs].size() < value_capacity) {
-      map[inputs].push_back(outputs);
+      map[inputs].insert(outputs);
     }
   }
 
@@ -67,7 +69,7 @@ public:
    * @param xs: inputs
    * @return a vector of outputs
    */
-  std::vector<IOVector> &operator[](const IOVector &xs) { return map[xs]; }
+  IOVectorSet &operator[](const IOVector &xs) { return map[xs]; }
 
   int size() { return map.size(); }
 
@@ -75,7 +77,7 @@ public:
     nlohmann::json j;
     for (auto &kv : map) {
       const IOVector &input = kv.first;
-      const std::vector<IOVector> &outputs = kv.second;
+      const IOVectorSet &outputs = kv.second;
       j += nlohmann::json{input, outputs};
     }
     return j;
