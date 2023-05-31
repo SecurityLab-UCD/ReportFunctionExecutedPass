@@ -54,6 +54,8 @@ void print_list(struct LinkedNode *head) {
 // todo fix this case
 static void test_exit(struct LinkedNode *head, int code) { exit(code); }
 
+int mod_rand(int x) { return rand() % x; }
+
 int main() {
   struct LargeStruct s = {1, 2, 3.0, 4.0, 5.0, 6.0};
 
@@ -69,6 +71,10 @@ int main() {
 
   struct LinkedNode *head = create_list(3);
   print_list(head);
+
+  printf("mod_rand(10) = %d\n", mod_rand(10));
+  printf("mod_rand(10) = %d\n", mod_rand(10));
+  printf("mod_rand(10) = %d\n", mod_rand(10));
 
   test_exit(head, 0);
   return 0;
