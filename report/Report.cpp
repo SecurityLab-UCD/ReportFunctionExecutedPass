@@ -12,6 +12,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
 
+#include <cxxabi.h>
 #include <signal.h>
 #include <stdlib.h>
 #include <string>
@@ -272,6 +273,20 @@ bool ReportPass::runOnFunction(Function &F) {
   Instruction *EntryInst = &*entry.begin();
   LLVMContext &Ctx = F.getContext();
   std::string file_name = F.getParent()->getSourceFileName();
+
+  int demangle_status;
+  char *demangled_fname =
+      abi::__cxa_demangle(fname.c_str(), 0, 0, &demangle_status);
+
+  // demangle_status == 0 means success
+  if (demangle_status == 0) {
+    fname = std::string(demangled_fname);
+  }
+
+  // check if fname is a std function, if so, skip instrumentation
+  if (fname.find("std::") == 0) {
+    return false;
+  }
 
   LLVM_DEBUG(dbgs() << "ReportPass: " << file_name << " " << fname << "\n");
   // insert atexit() at LLVMFuzzerTestOneInput function so fuzzers can dump
