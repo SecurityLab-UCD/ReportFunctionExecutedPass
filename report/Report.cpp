@@ -282,6 +282,7 @@ bool ReportPass::runOnFunction(Function &F) {
   if (demangle_status == 0) {
     fname = std::string(demangled_fname);
   }
+  free(demangled_fname);
 
   // check if fname is a std function, if so, skip instrumentation
   if (fname.find("std::") == 0) {
