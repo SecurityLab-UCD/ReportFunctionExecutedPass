@@ -266,6 +266,17 @@ void InsertSignalBefore(Function *F, Instruction *InsertBefore, int SignalNum) {
       CallInst::Create(Signal, SignalArgs, "", InsertBefore);
 }
 
+/**
+ * @brief Check if the given function is a global var or file
+ * @param fname Function name
+ * @return true if this "function" need to be skipped
+ */
+bool skip(std::string fname) {
+  return fname.find("global") != std::string::npos ||
+         fname.find("GLOBAL") != std::string::npos ||
+         fname.find("cxx") != std::string::npos;
+}
+
 bool ReportPass::runOnFunction(Function &F) {
   std::string fname = F.getName().str();
   Module *M = F.getParent();
@@ -288,6 +299,10 @@ bool ReportPass::runOnFunction(Function &F) {
     if (temp_name.find("std::") != std::string::npos) {
       return false;
     }
+  }
+
+  if (skip(fname)) {
+    return false;
   }
 
   LLVM_DEBUG(dbgs() << "ReportPass: " << file_name << " " << fname << "\n");

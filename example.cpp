@@ -10,6 +10,8 @@
 
 #include "lib.h"
 
+#include <iostream>
+
 struct LargeStruct {
   int a;
   int b;
@@ -72,9 +74,9 @@ int main() {
   struct LinkedNode *head = create_list(3);
   print_list(head);
 
-  printf("mod_rand(10) = %d\n", mod_rand(10));
-  printf("mod_rand(10) = %d\n", mod_rand(10));
-  printf("mod_rand(10) = %d\n", mod_rand(10));
+  std::cout << "mod_rand(10) = " << mod_rand(10) << "\n";
+  std::cout << "mod_rand(10) = " << mod_rand(10) << "\n";
+  std::cout << "mod_rand(10) = " << mod_rand(10) << "\n";
 
   test_exit(head, 0);
   return 0;
