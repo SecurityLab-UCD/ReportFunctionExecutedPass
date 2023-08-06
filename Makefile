@@ -25,10 +25,10 @@ lib.o: lib.h pass
 	$(CC) $(REPORT_FLAGS) -g -c lib.c
 
 example: reporter.stdc++.o reporter.c++.o lib.o pass libreporter.so
-	$(CC) -Xclang -disable-O0-optnone $(REPORT_FLAGS) example.c lib.o reporter.stdc++.o -lstdc++ -o example
+	$(CC) -Xclang -disable-O0-optnone $(REPORT_FLAGS) example.cpp lib.o reporter.stdc++.o -lstdc++ -o example
 
 debug: reporter.stdc++.o lib.o pass
-	$(CC) -Xclang -disable-O0-optnone $(REPORT_FLAGS) example.c lib.o reporter.stdc++.o -lstdc++ -o example
+	$(CC) -Xclang -disable-O0-optnone $(REPORT_FLAGS) example.cpp lib.o reporter.stdc++.o -lstdc++ -o example
 
 clean:
 	rm -f *.o example *.ll *.json *.a *.so
