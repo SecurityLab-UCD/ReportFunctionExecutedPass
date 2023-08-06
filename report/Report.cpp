@@ -280,13 +280,14 @@ bool ReportPass::runOnFunction(Function &F) {
 
   // demangle_status == 0 means success
   if (demangle_status == 0) {
-    fname = std::string(demangled_fname);
-  }
-  free(demangled_fname);
+    std::string demangled(demangled_fname);
+    free(demangled_fname);
 
-  // check if fname is a std function, if so, skip instrumentation
-  if (fname.find("std::") == 0) {
-    return false;
+    int first_par = demangled.find("(");
+    std::string temp_name = demangled.substr(0, first_par);
+    if (temp_name.find("std::") != std::string::npos) {
+      return false;
+    }
   }
 
   LLVM_DEBUG(dbgs() << "ReportPass: " << file_name << " " << fname << "\n");
